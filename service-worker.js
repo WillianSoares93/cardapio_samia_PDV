@@ -1,14 +1,14 @@
 // service-worker.js
 
 // É importante mudar a versão do cache para que o navegador saiba que precisa atualizar.
-const CACHE_NAME = 'samia-cardapio-v11'; 
+const CACHE_NAME = 'samia-cardapio-v25'; 
 
 // Lista de arquivos essenciais para o funcionamento offline do app.
 const urlsToCache = [
   '/',
   'index.html',
   'manifest.json',
-  'https://raw.githubusercontent.com/WillianSoares93/cardapio_samia_PDV/refs/heads/main/logo.png',
+  'https://raw.githubusercontent.com/WillianSoares93/cardapio_samia/refs/heads/main/logo.png',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
   'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap'
 ];
