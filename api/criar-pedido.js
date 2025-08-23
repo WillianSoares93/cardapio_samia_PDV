@@ -64,7 +64,12 @@ export default async (req, res) => {
         } else {
             paymentText = `Pagamento: *${paymentMethod}*`;
         }
-
+		
+// NOVO: Cria a linha de desconto apenas se houver um desconto
+        let discountText = '';
+        if (total.discount && total.discount > 0) {
+            discountText = `Desconto: - R$ ${total.discount.toFixed(2).replace('.', ',')}\n`;
+        }
         const fullMessage = `
 *-- NOVO PEDIDO --*
 
@@ -77,7 +82,7 @@ ${selectedAddress.referencia ? `*Referência:* ${selectedAddress.referencia}` : 
 ${itemsText}
 ------------------------------------
 Subtotal: R$ ${total.subtotal.toFixed(2).replace('.', ',')}
-Taxa de Entrega: R$ ${total.deliveryFee.toFixed(2).replace('.', ',')}
+${discountText}Taxa de Entrega: R$ ${total.deliveryFee.toFixed(2).replace('.', ',')}
 *Total: R$ ${total.finalTotal.toFixed(2).replace('.', ',')}*
 
 ${paymentText}
