@@ -1,7 +1,7 @@
 // service-worker.js
 
 // É importante mudar a versão do cache para que o navegador saiba que precisa atualizar.
-const CACHE_NAME = 'samia-cardapio-v25'; 
+const CACHE_NAME = 'samia-cardapio-v12'; 
 
 // Lista de arquivos essenciais para o funcionamento offline do app.
 const urlsToCache = [
@@ -52,24 +52,18 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Estratégia Stale-While-Revalidate para TODAS as requisições (incluindo a API).
+  // Estratégia Stale-While-Revalidate para TODAS as requisições.
   event.respondWith(
     caches.open(CACHE_NAME).then(cache => {
       return cache.match(request).then(cachedResponse => {
-        // 1. Em paralelo, busca a versão mais recente na rede (Revalidate).
         const fetchPromise = fetch(request).then(networkResponse => {
-          // Se a busca na rede for bem-sucedida, atualiza o cache.
-          if (networkResponse.ok) {
-            cache.put(request, networkResponse.clone());
-          }
+          // Se a busca na rede for bem-sucedida, clona a resposta e atualiza o cache.
+          // A clonagem é necessária porque a resposta só pode ser consumida uma vez.
+          cache.put(request, networkResponse.clone());
           return networkResponse;
-        }).catch(err => {
-            console.error('Service Worker: Fetch falhou:', err);
-            // Se a busca falhar, o erro será propagado (o navegador mostrará o erro de offline se não houver cache).
-            throw err;
         });
 
-        // 2. Retorna a resposta do cache imediatamente se existir (Stale),
+        // Retorna a resposta do cache imediatamente se existir (Stale),
         // caso contrário, espera a resposta da rede.
         return cachedResponse || fetchPromise;
       });
