@@ -1,3 +1,4 @@
+teste
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1011,6 +1012,20 @@
                 { slices: 10, label: '10 Fatias', priceKey: 'price10Slices' }
             ];
             
+            // --- INÍCIO DA ALTERAÇÃO ---
+            // Nova função para formatar a categoria da pizza
+            function formatPizzaCategory(category) {
+                if (!category) return 'PIZZAS';
+                const upperCategory = category.toUpperCase();
+                // Verifica se a categoria já está no formato desejado
+                if (upperCategory.startsWith('PIZZA')) {
+                    return category;
+                }
+                // Adiciona o prefixo
+                return `PIZZA(s) ${upperCategory}`;
+            }
+            // --- FIM DA ALTERAÇÃO ---
+
             function isPwaInstalled() {
                 if (window.matchMedia('(display-mode: standalone)').matches) {
                     return true;
@@ -1593,14 +1608,16 @@
                     const combinedPrice = ((priceFirstHalfFullSize || 0) / 2) + ((priceSecondHalfFullSize || 0) / 2);
                     const combinedDescription = `${firstHalfPizza.description.replace('Primeira metade: ', '')} e ${item.description}`;
 
+                    // --- INÍCIO DA ALTERAÇÃO ---
                     addToOrder({
                         type: 'split',
                         name: combinedName,
                         price: combinedPrice,
                         description: combinedDescription,
-                        category: 'pizzas', 
+                        category: 'PIZZA(s) MEIA A MEIA', // Categoria fixa para meia a meia
                         selected_slices: firstHalfPizza.selected_slices
                     }, clickedButton, itemImageUrl); 
+                    // --- FIM DA ALTERAÇÃO ---
 
                     firstHalfPizza = null;
                     isSelectingSecondHalf = false;
@@ -1654,14 +1671,16 @@
                             const selectedSlices = parseInt(this.dataset.slices);
                             const selectedPriceKey = this.dataset.priceKey;
                             const newName = `${selectedSlices} FATIAS: ${currentPizzaData.name}`;
+                            // --- INÍCIO DA ALTERAÇÃO ---
                             addToOrder({
                                 type: 'full',
                                 name: newName,
                                 price: currentPizzaData[selectedPriceKey], 
                                 description: currentPizzaData.description,
-                                category: currentPizzaData.category,
+                                category: formatPizzaCategory(currentPizzaData.category), // Formata a categoria
                                 selected_slices: selectedSlices
                             }, this, currentPizzaData.imageUrl); 
+                            // --- FIM DA ALTERAÇÃO ---
                             pizzaOptionModal.style.display = 'none';
                             updatePromotionButtonVisibility(); 
                         });
@@ -1687,6 +1706,7 @@
                             toggleAddItemButtons(false); 
                             toggleCategoryButtons(false); 
                             
+                            // --- INÍCIO DA ALTERAÇÃO ---
                             addToOrderOnly(
                                 {
                                     type: 'half_pending',
@@ -1694,10 +1714,11 @@
                                     price: currentPizzaData[selectedPriceKey] / 2,
                                     description: `Primeira metade: ${currentPizzaData.description}`,
                                     id: 'pending-half-pizza',
-                                    category: currentPizzaData.category,
+                                    category: formatPizzaCategory(currentPizzaData.category), // Formata a categoria
                                     selected_slices: selectedSlices
                                 }, this, currentPizzaData.imageUrl 
                             );
+                            // --- FIM DA ALTERAÇÃO ---
                             setTimeout(() => {
                                 showMessageModal('Agora, escolha a segunda metade da sua pizza.'); 
                             }, 100);
