@@ -1,4 +1,3 @@
-teste
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -995,39 +994,41 @@ teste
             getDoc(orderRef).then(docSnap => {
                 if (docSnap.exists()) {
                     const order = docSnap.data();
-					
-// Agrupa os itens do pedido por categoria
-const itemsByCategory = order.itens.reduce((acc, item) => {
-    const category = item.category || 'Outros';
-    if (!acc[category]) {
-        acc[category] = [];
-    }
-    acc[category].push(item);
-    return acc;
-}, {});
-					
-							
-					
                     let printContent = '';
+
+                    // --- INÍCIO DA ALTERAÇÃO ---
+                    // Agrupa os itens do pedido por categoria
+                    const itemsByCategory = order.itens.reduce((acc, item) => {
+                        const category = item.category || 'Outros';
+                        if (!acc[category]) {
+                            acc[category] = [];
+                        }
+                        acc[category].push(item);
+                        return acc;
+                    }, {});
+                    // --- FIM DA ALTERAÇÃO ---
                     
                     let contactPrintHtml = '';
                     if (order.endereco.telefone && order.endereco.telefone.trim() !== '') {
                         contactPrintHtml = `<p><strong>Contato:</strong> ${order.endereco.telefone}</p>`;
                     }
 
-let kitchenHtml = '';
-for (const category in itemsByCategory) {
-    kitchenHtml += `<h3 style="font-size: 22px; margin-top: 20px; border-bottom: 1px solid #ccc;">${category.toUpperCase()}</h3>`;
-    kitchenHtml += '<ul style="font-size: 20px; list-style: none; padding: 0;">';
-    kitchenHtml += itemsByCategory[category].map(item => {
-        let itemString = `<li style="padding: 8px 0; border-bottom: 1px dashed #ccc;"><strong>1x</strong> ${item.name}</li>`;
-        if (item.type === 'custom_burger' && item.ingredients && item.ingredients.length > 0) {
-            itemString += `<ul style="list-style: none; padding-left: 20px;">${item.ingredients.map(ing => `<li style="font-size: 16px;">- ${ing.name}</li>`).join('')}</ul>`;
-        }
-        return itemString;
-    }).join('');
-    kitchenHtml += '</ul>';
-}
+                    if (type === 'kitchen') {
+                        // --- INÍCIO DA ALTERAÇÃO ---
+                        let kitchenHtml = '';
+                        for (const category in itemsByCategory) {
+                            kitchenHtml += `<h3 style="font-size: 22px; margin-top: 20px; border-bottom: 1px solid #ccc;">${category.toUpperCase()}</h3>`;
+                            kitchenHtml += '<ul style="font-size: 20px; list-style: none; padding: 0;">';
+                            kitchenHtml += itemsByCategory[category].map(item => {
+                                let itemString = `<li style="padding: 8px 0; border-bottom: 1px dashed #ccc;"><strong>1x</strong> ${item.name}</li>`;
+                                if (item.type === 'custom_burger' && item.ingredients && item.ingredients.length > 0) {
+                                    itemString += `<ul style="list-style: none; padding-left: 20px;">${item.ingredients.map(ing => `<li style="font-size: 16px;">- ${ing.name}</li>`).join('')}</ul>`;
+                                }
+                                return itemString;
+                            }).join('');
+                            kitchenHtml += '</ul>';
+                        }
+                        // --- FIM DA ALTERAÇÃO ---
 
                         printContent = `
                             <div style="font-family: monospace; padding: 20px; font-size: 16px;">
@@ -1036,12 +1037,22 @@ for (const category in itemsByCategory) {
                                 <p style="font-size: 18px;"><strong>Cliente:</strong> ${order.endereco.clientName}</p>
                                 ${contactPrintHtml.replace(/<strong>/g, '<strong style="font-size: 18px;">').replace(/<p>/g, '<p style="font-size: 18px;">')}
                                 <hr style="border-top: 2px dashed black; margin: 15px 0;">
-                                <ul style="font-size: 20px; list-style: none; padding: 0;">
-                                    ${kitchenHtml}
-                                </ul>
+                                ${kitchenHtml}
                             </div>
                         `;
                     } else { // client receipt
+                        // --- INÍCIO DA ALTERAÇÃO ---
+                        let clientItemsHtml = '';
+                        for (const category in itemsByCategory) {
+                            clientItemsHtml += `<h3 style="font-weight: bold; margin-top: 10px;">${category.toUpperCase()}</h3>`;
+                            clientItemsHtml += '<ul>';
+                            clientItemsHtml += itemsByCategory[category].map(item => 
+                                `<li style="display: flex; justify-content: space-between; padding: 5px 0;"><span>${item.name}</span><span>R$${item.price.toFixed(2).replace('.', ',')}</span></li>`
+                            ).join('');
+                            clientItemsHtml += '</ul>';
+                        }
+                        // --- FIM DA ALTERAÇÃO ---
+
                         let paymentDetailsHtml = '';
                         if (order.pagamento) {
                             let paymentText = '';
@@ -1063,25 +1074,25 @@ for (const category in itemsByCategory) {
                             `;
                         }
 
-printContent = `
-    <div style="font-family: monospace; padding: 20px;">
-        <h2 style="text-align: center; font-size: 24px; margin-bottom: 20px;">Sâmia Pizzaria</h2>
-        <p><strong>Pedido:</strong> #${id.substring(0, 5)}</p>
-        <p><strong>Cliente:</strong> ${order.endereco.clientName}</p>
-        ${contactPrintHtml}
-        <p><strong>Endereço:</strong> ${order.endereco.rua}, ${order.endereco.numero} - ${order.endereco.bairro}</p>
-        <hr style="border-top: 1px dashed black; margin: 15px 0;">
-        ${clientItemsHtml}
-        <hr style="border-top: 1px dashed black; margin: 15px 0;">
-        <div style="text-align: right;">
-            <p>Subtotal: R$ ${order.total.subtotal.toFixed(2).replace('.', ',')}</p>
-            ${order.total.discount > 0 ? `<p>Desconto: -R$ ${order.total.discount.toFixed(2).replace('.', ',')}</p>` : ''}
-            <p>Taxa de Entrega: R$ ${order.total.deliveryFee.toFixed(2).replace('.', ',')}</p>
-            <p style="font-weight: bold; font-size: 18px;">Total: R$ ${order.total.finalTotal.toFixed(2).replace('.', ',')}</p>
-        </div>
-        ${paymentDetailsHtml}
-    </div>
-`;
+                        printContent = `
+                            <div style="font-family: monospace; padding: 20px;">
+                                <h2 style="text-align: center; font-size: 24px; margin-bottom: 20px;">Sâmia Pizzaria</h2>
+                                <p><strong>Pedido:</strong> #${id.substring(0, 5)}</p>
+                                <p><strong>Cliente:</strong> ${order.endereco.clientName}</p>
+                                ${contactPrintHtml}
+                                <p><strong>Endereço:</strong> ${order.endereco.rua}, ${order.endereco.numero} - ${order.endereco.bairro}</p>
+                                <hr style="border-top: 1px dashed black; margin: 15px 0;">
+                                ${clientItemsHtml}
+                                <hr style="border-top: 1px dashed black; margin: 15px 0;">
+                                <div style="text-align: right;">
+                                    <p>Subtotal: R$ ${order.total.subtotal.toFixed(2).replace('.', ',')}</p>
+                                    ${order.total.discount > 0 ? `<p>Desconto: -R$ ${order.total.discount.toFixed(2).replace('.', ',')}</p>` : ''}
+                                    <p>Taxa de Entrega: R$ ${order.total.deliveryFee.toFixed(2).replace('.', ',')}</p>
+                                    <p style="font-weight: bold; font-size: 18px;">Total: R$ ${order.total.finalTotal.toFixed(2).replace('.', ',')}</p>
+                                </div>
+                                ${paymentDetailsHtml}
+                            </div>
+                        `;
                     }
 
                     const printWindow = window.open('', '', 'height=600,width=800');
