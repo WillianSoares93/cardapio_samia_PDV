@@ -45,18 +45,31 @@ export default async (req, res) => {
             criadoEm: serverTimestamp()
         });
 
-        // Monta a mensagem para o WhatsApp
-        let itemsText = order.map(item => {
-            let itemDescription = `- *${item.name}* - R$ ${item.price.toFixed(2).replace('.', ',')}\n`;
-            if (item.type === 'custom_burger' && item.ingredients) {
-                // CORREÇÃO: Adiciona mais espaços para indentar a lista de ingredientes
-                itemDescription += item.ingredients.map(ing => {
-                    const formattedName = ing.name.replace(/\(x\d+\)/g, match => `*${match}*`);
-                    return `        - ${formattedName}\n`; // 8 espaços criam o recuo
-                }).join('');
-            }
-            return itemDescription;
-        }).join('');
+
+// Monta a mensagem para o WhatsApp agrupando por categoria
+const itemsByCategory = order.reduce((acc, item) => {
+    const category = item.category || 'Outros';
+    if (!acc[category]) {
+        acc[category] = [];
+    }
+    acc[category].push(item);
+    return acc;
+}, {});
+
+let itemsText = '';
+for (const category in itemsByCategory) {
+    itemsText += `\n*-- ${category.toUpperCase()} --*\n`;
+    itemsText += itemsByCategory[category].map(item => {
+        let itemDescription = `- *${item.name}* - R$ ${item.price.toFixed(2).replace('.', ',')}\n`;
+        if (item.type === 'custom_burger' && item.ingredients) {
+            itemDescription += item.ingredients.map(ing => {
+                const formattedName = ing.name.replace(/\(x\d+\)/g, match => `*${match}*`);
+                return `        - ${formattedName}\n`;
+            }).join('');
+        }
+        return itemDescription;
+    }).join('');
+}
 
         let paymentText = '';
         if (typeof paymentMethod === 'object' && paymentMethod.method === 'Dinheiro') {
