@@ -26,11 +26,11 @@ const db = getFirestore(app);
 
 
 // URLs das suas planhas Google Sheets publicadas como CSV.
-const CARDAPIO_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSDOVxav8wiNNTL5Jt1Cq3F3fBD7yLyHLGi2c_0r1abHVZRY2W7RbW3h4FX_poEdCXE8Tl85KGAU28v/pub?gid=1575270352&single=true&output=csv'; 
-const PROMOCOES_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSDOVxav8wiNNTL5Jt1Cq3F3fBD7yLyHLGi2c_0r1abHVZRY2W7RbW3h4FX_poEdCXE8Tl85KGAU28v/pub?gid=1622604495&single=true&output=csv'; 
-const DELIVERY_FEES_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSDOVxav8wiNNTL5Jt1Cq3F3fBD7yLyHLGi2c_0r1abHVZRY2W7RbW3h4FX_poEdCXE8Tl85KGAU28v/pub?gid=1298581759&single=true&output=csv';
-const INGREDIENTES_HAMBURGUER_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSDOVxav8wiNNTL5Jt1Cq3F3fBD7yLyHLGi2c_0r1abHVZRY2W7RbW3h4FX_poEdCXE8Tl85KGAU28v/pub?gid=679334079&single=true&output=csv';
-const CONTACT_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSDOVxav8wiNNTL5Jt1Cq3F3fBD7yLyHLGi2c_0r1abHVZRY2W7RbW3h4FX_poEdCXE8Tl85KGAU28v/pub?gid=1022597597&single=true&output=csv';
+const CARDAPIO_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSDOVxav8wiNNTL5Jt1Cq3F3fBD7yLyHLGi2c_0r1abHVZRY2W7RbW3h4FX_poEdCXE8Tl85KGAU28v/pubhtml?gid=1575270352&single=true'; 
+const PROMOCOES_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSDOVxav8wiNNTL5Jt1Cq3F3fBD7yLyHLGi2c_0r1abHVZRY2W7RbW3h4FX_poEdCXE8Tl85KGAU28v/pubhtml?gid=1622604495&single=true'; 
+const DELIVERY_FEES_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSDOVxav8wiNNTL5Jt1Cq3F3fBD7yLyHLGi2c_0r1abHVZRY2W7RbW3h4FX_poEdCXE8Tl85KGAU28v/pubhtml?gid=679334079&single=true';
+const INGREDIENTES_HAMBURGUER_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSDOVxav8wiNNTL5Jt1Cq3F3fBD7yLyHLGi2c_0r1abHVZRY2W7RbW3h4FX_poEdCXE8Tl85KGAU28v/pubhtml?gid=1298581759&single=true';
+const CONTACT_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSDOVxav8wiNNTL5Jt1Cq3F3fBD7yLyHLGi2c_0r1abHVZRY2W7RbW3h4FX_poEdCXE8Tl85KGAU28v/pubhtml?gid=1022597597&single=true';
 
 // Leitor de linha CSV robusto que lida com vírgulas dentro de aspas
 function parseCsvLine(line) {
