@@ -894,7 +894,7 @@
             let unavailableItems = {};
             let ingredientVisibility = {};
             let ingredientStatus = {};
-            let pizzaHalfStatus = {}; // NOVO: Estado para controle de meia pizza
+            let pizzaHalfStatus = {};
             
             let selectedAddress = {
                 clientName: null, 
@@ -2018,7 +2018,7 @@
                     subtotal: subtotal,
                     discount: finalDiscountAmount,
                     deliveryFee: selectedAddress.deliveryFee,
-                    finalTotal: subtotal - finalDiscountAmount + selectedAddress.deliveryFee
+                    finalTotal: subtotal - finalDiscountAmount + (selectedAddress.deliveryFee || 0)
                 };
 
                 fetch('/api/criar-pedido', {
@@ -2056,6 +2056,24 @@
                     checkoutButton.disabled = false;
                     updateCheckoutButtonText();
                 });
+            }
+
+            function calculateOrderTotal() {
+                let currentSubtotal = 0;
+                order.forEach(item => {
+                    if (item.type !== 'discount') {
+                        currentSubtotal += (item.price || 0);
+                    }
+                });
+
+                let finalDiscountAmount = 0;
+                if (discountPromotion) {
+                    finalDiscountAmount = currentSubtotal * (discountPromotion.promoPrice / 100);
+                }
+                
+                const deliveryFee = selectedAddress.deliveryFee || 0;
+
+                return currentSubtotal - finalDiscountAmount + deliveryFee;
             }
 
             function handleCheckoutFlow() {
@@ -2331,23 +2349,7 @@
                     feedbackEl.classList.add('hidden');
                 }, 2000);
             }
-
-            function calculateOrderTotal() {
-                let currentSubtotal = 0;
-                order.forEach(item => {
-                    if (item.type !== 'discount') {
-                        currentSubtotal += item.price;
-                    }
-                });
-
-                let finalDiscountAmount = 0;
-                if (discountPromotion) {
-                    finalDiscountAmount = subtotal * (discountPromotion.promoPrice / 100);
-                }
-
-                return currentSubtotal - finalDiscountAmount + selectedAddress.deliveryFee;
-            }
-
+            
             function getStickyHeaderHeight() {
                 const stickyHeader = document.querySelector('.category-bar-mobile-sticky');
                 return stickyHeader ? stickyHeader.offsetHeight : 60; // Fallback
