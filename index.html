@@ -1640,39 +1640,43 @@
                         
                         const allowsHalf = currentPizzaData.allowHalf !== false;
                         
-                        let buttonsHtml = `
-                            <button class="add-full-size-pizza-btn px-4 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700 transition"
+                        const fullPizzaButtonHtml = `
+                            <button class="add-full-size-pizza-btn px-4 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700 transition w-full"
                                     data-slices="${size.slices}" data-price-key="${size.priceKey}">
-                                Inteira
+                                Adicionar Inteira
                             </button>
                         `;
 
+                        let halfPizzaButtonHtml = '';
                         if (allowsHalf) {
-                            buttonsHtml += `
-                                <button class="add-half-size-pizza-btn px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition"
+                            halfPizzaButtonHtml = `
+                                <button class="add-half-size-pizza-btn px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition w-full"
                                         data-slices="${size.slices}" data-price-key="${size.priceKey}">
-                                    Meia
+                                    Adicionar Meia Pizza
                                 </button>
                             `;
                         } else {
-                             buttonsHtml += `
-                                <button class="add-half-size-pizza-btn px-4 py-2 bg-gray-400 text-white rounded-md text-sm cursor-not-allowed"
+                             halfPizzaButtonHtml = `
+                                <button class="add-half-size-pizza-btn px-4 py-2 bg-gray-400 text-white rounded-md text-sm cursor-not-allowed w-full"
                                         disabled>
-                                    Meia
+                                    Adicionar Meia Pizza
                                 </button>
                             `;
                         }
 
                         let halfPizzaMessageHtml = '';
                         if (!allowsHalf) {
-                            halfPizzaMessageHtml = `<p class="text-xs text-center text-gray-500 mt-2">Este sabor não permite meia a meia.</p>`;
+                            halfPizzaMessageHtml = `<div class="text-xs text-center text-gray-500 mt-1 h-6">Este sabor não permite meia a meia.</div>`;
+                        } else {
+                            halfPizzaMessageHtml = `<div class="h-6 mt-1"></div>`;
                         }
                         
                         optionDiv.innerHTML = `
                             <span class="font-bold text-base text-gray-800">${size.label}</span>
-                            <span class="font-bold text-red-600 text-lg">R$ ${sizePrice.toFixed(2).replace('.', ',')}</span>
-                            <div class="flex justify-center gap-2 mt-2 w-full">
-                                ${buttonsHtml}
+                            <span class="font-bold text-red-600 text-lg mb-2">R$ ${sizePrice.toFixed(2).replace('.', ',')}</span>
+                            <div class="flex flex-col gap-2 mt-2 w-full">
+                                ${fullPizzaButtonHtml}
+                                ${halfPizzaButtonHtml}
                             </div>
                             ${halfPizzaMessageHtml}
                         `;
@@ -2317,7 +2321,7 @@
 
                 let finalDiscountAmount = 0;
                 if (discountPromotion) {
-                    finalDiscountAmount = currentSubtotal * (discountPromotion.promoPrice / 100);
+                    finalDiscountAmount = subtotal * (discountPromotion.promoPrice / 100);
                 }
 
                 return currentSubtotal - finalDiscountAmount + selectedAddress.deliveryFee;
