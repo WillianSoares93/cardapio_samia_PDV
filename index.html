@@ -894,6 +894,7 @@
             let unavailableItems = {};
             let ingredientVisibility = {};
             let ingredientStatus = {};
+            let pizzaHalfStatus = {}; // NOVO: Estado para controle de meia pizza
             
             let selectedAddress = {
                 clientName: null, 
@@ -1122,6 +1123,10 @@
                 });
                 onSnapshot(doc(db, "config", "item_visibility"), (doc) => {
                     itemVisibility = doc.exists() ? doc.data() : {};
+                    updateUI();
+                });
+                onSnapshot(doc(db, "config", "pizza_half_status"), (doc) => {
+                    pizzaHalfStatus = doc.exists() ? doc.data() : {};
                     updateUI();
                 });
                 onSnapshot(doc(db, "config", "ingredient_status"), (doc) => {
@@ -1509,7 +1514,7 @@
                             }
                         }
                         
-                        if (item && item.allowHalf === false) {
+                        if (item && pizzaHalfStatus[item.id] === false) {
                             disable = true;
                         }
 
@@ -1572,7 +1577,7 @@
                         return;
                     }
                     
-                    if (item.allowHalf === false) {
+                    if (pizzaHalfStatus[item.id] === false) {
                         showMessageModal(`O sabor "${item.name}" não está disponível para meia a meia.`);
                         return;
                     }
@@ -1638,7 +1643,7 @@
                         const optionDiv = document.createElement('div');
                         optionDiv.className = 'pizza-size-option';
                         
-                        const allowsHalf = currentPizzaData.allowHalf !== false;
+                        const allowsHalf = pizzaHalfStatus[currentPizzaData.id] !== false;
                         
                         const fullPizzaButtonHtml = `
                             <button class="add-full-size-pizza-btn px-4 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700 transition w-full"
