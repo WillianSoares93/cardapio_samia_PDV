@@ -1924,7 +1924,7 @@
                     editDeliveryAddressBtn.classList.add('hidden');
                 }
                 
-                const total = subtotal - finalDiscountAmount + selectedAddress.deliveryFee;
+                const total = subtotal - finalDiscountAmount + (selectedAddress.deliveryFee || 0);
                 totalEl.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
 
                 if (selectedPaymentMethod) {
