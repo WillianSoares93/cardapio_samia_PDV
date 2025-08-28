@@ -30,387 +30,410 @@
             color: white;
         }
         .availability-row {
-            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-            border-left: 5px solid transparent;
-        }
-        .availability-row:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 40px;
-            height: 24px;
-        }
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 24px;
-        }
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 16px;
-            width: 16px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-        input:checked + .slider {
-            background-color: #4CAF50;
-        }
-        input:checked + .slider:before {
-            transform: translateX(16px);
-        }
-
-        .switch.red input:checked + .slider {
-            background-color: #ef4444;
-        }
-
-        .switch-group label {
             display: flex;
             align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            white-space: nowrap;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background-color: #ffffff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .availability-row:hover {
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .search-container {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        .availability-row-text-container {
+            flex-grow: 1;
+        }
+        /* Custom switch for availability */
+        .switch {
+          position: relative;
+          display: inline-block;
+          width: 48px;
+          height: 28px;
+        }
+
+        .switch input {
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+
+        .slider {
+          position: absolute;
+          cursor: pointer;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: #ccc;
+          transition: .4s;
+          border-radius: 28px;
+        }
+
+        .slider:before {
+          position: absolute;
+          content: "";
+          height: 20px;
+          width: 20px;
+          left: 4px;
+          bottom: 4px;
+          background-color: white;
+          transition: .4s;
+          border-radius: 50%;
+        }
+
+        input:checked + .slider {
+          background-color: #ef4444;
+        }
+
+        input:focus + .slider {
+          box-shadow: 0 0 1px #ef4444;
+        }
+
+        input:checked + .slider:before {
+          transform: translateX(20px);
         }
     </style>
 </head>
-<body>
+<body class="bg-gray-100 min-h-screen">
 
-    <!-- Modal de Mensagens -->
-    <div id="message-modal" class="modal z-[2000] fixed inset-0 flex items-center justify-center p-4">
-        <div class="modal-content bg-white rounded-lg shadow-lg p-6 max-w-sm w-full">
-            <div class="flex flex-col items-center">
-                <div id="modal-icon" class="text-4xl text-green-500 mb-4"></div>
-                <p id="modal-message" class="text-center text-gray-700 font-semibold"></p>
-                <button id="close-modal-btn" class="mt-6 px-6 py-2 bg-red-600 text-white rounded-full font-bold shadow-md hover:bg-red-700 transition">Fechar</button>
-            </div>
-        </div>
+    <div id="loading-overlay" class="loading-overlay">
+        <i class="fas fa-spinner fa-spin text-red-500 text-4xl"></i>
     </div>
 
-    <div class="min-h-screen bg-gray-100 flex flex-col items-center py-4 px-2 sm:px-4">
-        <header class="w-full max-w-5xl flex flex-col sm:flex-row justify-between items-center mb-6 p-4 bg-white rounded-lg shadow-md">
-            <h1 class="text-xl sm:text-2xl font-bold text-gray-800 mb-2 sm:mb-0">Gerenciar Disponibilidade</h1>
-            <div class="flex items-center space-x-4">
-                <span id="user-display" class="text-sm font-medium text-gray-600 hidden md:block"></span>
-                <button id="logout-btn" class="text-red-500 hover:text-red-700 text-sm font-semibold transition flex items-center">
-                    <i class="fas fa-sign-out-alt mr-2"></i>Sair
-                </button>
+    <div class="max-w-4xl mx-auto py-8 px-4">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">Gerenciar Cardápio</h1>
+            <button id="logout-btn" class="text-red-500 hover:text-red-700 transition duration-200">
+                <i class="fas fa-sign-out-alt"></i>
+            </button>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg shadow-md mb-6">
+            <div class="flex space-x-2 border-b border-gray-200">
+                <button id="pizzas-tab" class="tab-btn active px-4 py-2 text-gray-500 font-medium">Pizzas</button>
+                <button id="burgers-tab" class="tab-btn px-4 py-2 text-gray-500 font-medium">Hambúrgueres</button>
+                <button id="bebidas-tab" class="tab-btn px-4 py-2 text-gray-500 font-medium">Bebidas</button>
+                <button id="porcoes-tab" class="tab-btn px-4 py-2 text-gray-500 font-medium">Porções</button>
             </div>
-        </header>
 
-        <nav class="w-full max-w-5xl bg-white rounded-lg shadow-md flex justify-around mb-6 p-2">
-            <button id="tab-pizzas" class="tab-btn active px-4 py-2 font-semibold text-gray-600 hover:text-gray-900 focus:outline-none">Pizzas</button>
-            <button id="tab-lanches" class="tab-btn px-4 py-2 font-semibold text-gray-600 hover:text-gray-900 focus:outline-none">Lanches</button>
-            <button id="tab-bebidas" class="tab-btn px-4 py-2 font-semibold text-gray-600 hover:text-gray-900 focus:outline-none">Bebidas</button>
-            <button id="tab-outros" class="tab-btn px-4 py-2 font-semibold text-gray-600 hover:text-gray-900 focus:outline-none">Outros</button>
-        </nav>
-
-        <main class="w-full max-w-5xl">
-            <div class="flex flex-col sm:flex-row justify-between items-center bg-white rounded-lg shadow-md p-4 mb-4">
-                <div class="w-full sm:w-1/2 mb-4 sm:mb-0">
-                    <input type="text" id="search-input" placeholder="Buscar por nome..." class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
-                </div>
-                <div class="w-full sm:w-1/2 flex justify-end space-x-2 overflow-x-auto">
-                    <button class="filter-btn active px-3 py-1 bg-gray-200 text-gray-700 rounded-full font-medium text-sm transition">Todos</button>
-                    <button class="filter-btn px-3 py-1 bg-gray-200 text-gray-700 rounded-full font-medium text-sm transition">Disponíveis</button>
-                    <button class="filter-btn px-3 py-1 bg-gray-200 text-gray-700 rounded-full font-medium text-sm transition">Esgotados</button>
-                    <button class="filter-btn px-3 py-1 bg-gray-200 text-gray-700 rounded-full font-medium text-sm transition">Ocultos</button>
+            <div class="search-container bg-white p-4">
+                <input type="text" id="search-input" placeholder="Pesquisar itens..." class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                <div class="flex items-center justify-between mt-4">
+                    <div id="filter-status-container" class="flex flex-wrap gap-2 text-sm">
+                        <button class="filter-btn active px-3 py-1 rounded-full bg-gray-200 text-gray-700" data-status="Todos">Todos</button>
+                        <button class="filter-btn px-3 py-1 rounded-full bg-gray-200 text-gray-700" data-status="Disponíveis">Disponíveis</button>
+                        <button class="filter-btn px-3 py-1 rounded-full bg-gray-200 text-gray-700" data-status="Esgotados">Esgotados</button>
+                        <button class="filter-btn px-3 py-1 rounded-full bg-gray-200 text-gray-700" data-status="Ocultos">Ocultos</button>
+                    </div>
                 </div>
             </div>
+            
+        </div>
 
-            <div id="panels-container" class="space-y-4">
-                <div id="pizzas-panel" class="tab-panel active"></div>
-                <div id="lanches-panel" class="tab-panel hidden"></div>
-                <div id="bebidas-panel" class="tab-panel hidden"></div>
-                <div id="outros-panel" class="tab-panel hidden"></div>
-            </div>
-        </main>
+        <div id="pizzas-panel" class="tab-panel active"></div>
+        <div id="burgers-panel" class="tab-panel hidden"></div>
+        <div id="bebidas-panel" class="tab-panel hidden"></div>
+        <div id="porcoes-panel" class="tab-panel hidden"></div>
     </div>
 
     <script type="module">
+        // Import Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, updateDoc, onSnapshot, collection, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Variáveis globais de ambiente (do Canvas)
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-        // Inicializa o Firebase
+        // Firebase configuration (replace with your actual config)
+        const firebaseConfig = {
+            apiKey: "AIzaSyB9LJ-7bOvHGYyFE_H2Qd7XFcyjmSPq_ro",
+            authDomain: "samia-cardapio.firebaseapp.com",
+            projectId: "samia-cardapio",
+            storageBucket: "samia-cardapio.firebasestorage.app",
+            messagingSenderId: "223260436641",
+            appId: "1:223260436641:web:adf78e77a0267f66f1e8e0"
+        };
+        
+        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Referências aos elementos do DOM
-        const logoutBtn = document.getElementById('logout-btn');
-        const userDisplay = document.getElementById('user-display');
-        const panelsContainer = document.getElementById('panels-container');
-        const tabButtons = document.querySelectorAll('.tab-btn');
-        const filterButtons = document.querySelectorAll('.filter-btn');
+        // Define constants for the Google Sheets URLs
+        const CARDAPIO_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQUmJgK9fI5_0Fp-iQf8u_H_gI8yTq9J5uC0sYy0T1J7w/pub?gid=324234&single=true&output=csv';
+        
+        // UI Elements
+        const loadingOverlay = document.getElementById('loading-overlay');
         const searchInput = document.getElementById('search-input');
-        const messageModal = document.getElementById('message-modal');
-        const modalMessage = document.getElementById('modal-message');
-        const closeModalBtn = document.getElementById('close-modal-btn');
+        const filterStatusContainer = document.getElementById('filter-status-container');
+        const tabs = document.querySelectorAll('.tab-btn');
+        const panels = document.querySelectorAll('.tab-panel');
+        const logoutBtn = document.getElementById('logout-btn');
 
-        let allItems = []; // Armazenará todos os itens do cardápio
+        let cardapioData = {};
+        let filteredCardapioData = {};
 
-        function showMessageModal(message, isSuccess = true) {
-            modalMessage.textContent = message;
-            const icon = document.getElementById('modal-icon');
-            if (isSuccess) {
-                icon.innerHTML = '&#10003;'; // Checkmark
-                icon.className = 'text-4xl text-green-500 mb-4';
-            } else {
-                icon.innerHTML = '&#10006;'; // X mark
-                icon.className = 'text-4xl text-red-500 mb-4';
-            }
-            messageModal.style.display = 'flex';
-        }
-
-        closeModalBtn.addEventListener('click', () => {
-            messageModal.style.display = 'none';
-        });
-
-        // Autenticação e redirecionamento
-        onAuthStateChanged(auth, async (user) => {
+        // Authentication State Listener
+        onAuthStateChanged(auth, (user) => {
             if (user) {
-                userDisplay.textContent = `Logado como: ${user.email}`;
-                document.body.style.visibility = 'visible'; // Torna o corpo visível
-                fetchAndListenToMenu(); // Chama a função para buscar e ouvir o cardápio
+                document.body.style.visibility = 'visible';
+                fetchAndRenderData();
             } else {
                 window.location.href = 'login.html';
             }
         });
 
-        logoutBtn.addEventListener('click', async () => {
-            await signOut(auth);
-        });
-
-        tabButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                tabButtons.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
-                document.getElementById(btn.id.replace('tab-', '') + '-panel').classList.remove('hidden');
-                // Re-aplica os filtros
+        // Event Listeners
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                panels.forEach(p => p.classList.add('hidden'));
+                document.getElementById(tab.id.replace('-tab', '-panel')).classList.remove('hidden');
                 filterItems();
             });
         });
 
-        filterButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                filterButtons.forEach(b => b.classList.remove('active', 'bg-red-500', 'text-white'));
-                btn.classList.add('active', 'bg-red-500', 'text-white');
+        searchInput.addEventListener('input', filterItems);
+        filterStatusContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('filter-btn')) {
+                filterStatusContainer.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
                 filterItems();
+            }
+        });
+        
+        logoutBtn.addEventListener('click', () => {
+            signOut(auth);
+        });
+
+        // Function to parse CSV data
+        function parseCsvData(csvText) {
+            const lines = csvText.trim().split('\n');
+            const headers = lines[0].split(';').map(header => header.trim().replace(/"/g, ''));
+            const data = lines.slice(1).map(line => {
+                const values = line.split(';').map(value => value.trim().replace(/"/g, ''));
+                const item = {};
+                headers.forEach((header, i) => {
+                    item[header] = values[i];
+                });
+                return item;
             });
-        });
+            return data;
+        }
 
-        searchInput.addEventListener('input', () => {
-            filterItems();
-        });
-
-        async function fetchAndListenToMenu() {
+        // Function to fetch and render data
+        async function fetchAndRenderData() {
+            loadingOverlay.style.display = 'flex';
             try {
-                const response = await fetch('/api/menu');
+                const response = await fetch(CARDAPIO_CSV_URL);
                 if (!response.ok) {
-                    throw new Error('Falha ao buscar o cardápio.');
+                    throw new Error(`Falha ao buscar dados da planilha: ${response.statusText}`);
                 }
-                const data = await response.json();
-                allItems = data.cardapio;
+                const csvText = await response.text();
+                const items = parseCsvData(csvText);
                 
-                // Ouve por mudanças no Firestore em tempo real
-                onSnapshot(doc(db, "config", "item_status"), (docSnap) => {
-                    const unavailableItems = docSnap.exists() ? docSnap.data() : {};
-                    renderMenu(allItems, unavailableItems);
-                });
-            } catch (error) {
-                console.error("Erro ao carregar o cardápio ou dados do Firestore:", error);
-                showMessageModal('Erro ao carregar os dados. Tente novamente mais tarde.', false);
-            }
-        }
-
-        function renderMenu(items, statusData) {
-            const groupedItems = groupByCategory(items);
-            const panels = {
-                'pizzas-panel': ['pizzas'],
-                'lanches-panel': ['lanches', 'burgers', 'hamburguers', 'lanche'],
-                'bebidas-panel': ['bebidas', 'refrigerantes'],
-                'outros-panel': Object.keys(groupedItems).filter(category => !['pizzas', 'lanches', 'burgers', 'hamburguers', 'lanche', 'bebidas', 'refrigerantes'].includes(category))
-            };
-
-            panelsContainer.querySelectorAll('.tab-panel').forEach(panel => panel.innerHTML = '');
-
-            for (const panelId in panels) {
-                const panel = document.getElementById(panelId);
-                const categories = panels[panelId];
-                renderPanel(groupedItems, categories, panel, statusData);
-            }
-            filterItems(); // Garante que a filtragem inicial seja aplicada
-        }
-
-        function renderPanel(groupedItems, categories, panel, statusData) {
-            categories.forEach(category => {
-                const items = groupedItems[category];
-                if (!items || items.length === 0) return;
-
-                const categoryHeader = `
-                    <div data-category-group class="mb-2">
-                        <h2 class="text-xl font-bold text-gray-800 capitalize mb-4">${category}</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <!-- Items serão injetados aqui -->
-                        </div>
-                    </div>
-                `;
-                panel.insertAdjacentHTML('beforeend', categoryHeader);
-
-                const container = panel.lastElementChild.querySelector('div');
-                items.forEach(item => {
-                    const isAvailable = (statusData[item.id] !== false && statusData[item.id]?.available !== false) || item.id === undefined;
-                    const isVisible = (statusData[item.id] !== false && statusData[item.id]?.visible !== false) || item.id === undefined;
-                    const halfPizzaAvailable = (statusData[item.id] !== false && statusData[item.id]?.halfPizzaAvailable !== false) || item.id === undefined;
-                    
-                    const availableClass = isAvailable ? 'border-l-green-500' : 'border-l-red-500';
-                    const visibleClass = isVisible ? '' : 'opacity-50';
-                    
-                    const isPizza = item.category.toLowerCase() === 'pizzas';
-
-                    const itemHtml = `
-                        <div id="${item.id}" data-name="${item.name.toLowerCase()}" data-category="${item.category.toLowerCase()}"
-                            data-available="${isAvailable}" data-visible="${isVisible}"
-                            class="availability-row flex items-center justify-between p-4 bg-white rounded-lg shadow-sm ${availableClass} ${visibleClass}">
-                            <div class="flex-1 min-w-0 mr-4">
-                                <h3 class="font-semibold text-gray-900 truncate">${item.name}</h3>
-                                <p class="text-sm text-gray-500 truncate">${item.description}</p>
-                            </div>
-                            <div class="flex items-center space-x-4 switch-group">
-                                <label>
-                                    <span class="text-sm text-gray-700">Visível</span>
-                                    <span class="switch red">
-                                        <input type="checkbox" class="visible-toggle" data-id="${item.id}" ${isVisible ? 'checked' : ''}>
-                                        <span class="slider"></span>
-                                    </span>
-                                </label>
-                                <label>
-                                    <span class="text-sm text-gray-700">Disponível</span>
-                                    <span class="switch">
-                                        <input type="checkbox" class="available-toggle" data-id="${item.id}" ${isAvailable ? 'checked' : ''}>
-                                        <span class="slider"></span>
-                                    </span>
-                                </label>
-                                ${isPizza ? `
-                                <label>
-                                    <span class="text-sm text-gray-700">Meia Pizza</span>
-                                    <span class="switch">
-                                        <input type="checkbox" class="half-pizza-toggle" data-id="${item.id}" ${halfPizzaAvailable ? 'checked' : ''}>
-                                        <span class="slider"></span>
-                                    </span>
-                                </label>
-                                ` : ''}
-                            </div>
-                        </div>
-                    `;
-                    container.insertAdjacentHTML('beforeend', itemHtml);
-                });
-            });
-
-            // Adiciona os event listeners para os novos toggles
-            panel.querySelectorAll('.available-toggle, .visible-toggle, .half-pizza-toggle').forEach(toggle => {
-                toggle.addEventListener('change', (event) => {
-                    const itemId = event.target.dataset.id;
-                    const isChecked = event.target.checked;
-                    let fieldToUpdate = '';
-                    if (event.target.classList.contains('available-toggle')) {
-                        fieldToUpdate = 'available';
-                    } else if (event.target.classList.contains('visible-toggle')) {
-                        fieldToUpdate = 'visible';
-                    } else if (event.target.classList.contains('half-pizza-toggle')) {
-                        fieldToUpdate = 'halfPizzaAvailable';
-                    }
-                    saveAvailability(itemId, fieldToUpdate, isChecked);
-                });
-            });
-        }
-
-        async function saveAvailability(itemId, field, value) {
-            try {
+                // Get item availability and half-pizza status from Firestore
                 const itemStatusRef = doc(db, "config", "item_status");
-                // Atualiza o documento com a nova disponibilidade.
-                // Usamos o operador de mapa para garantir que apenas o campo específico seja atualizado.
-                const updateData = {
-                    [itemId]: {
-                        ...{
-                            available: true,
-                            visible: true,
-                            halfPizzaAvailable: true,
-                        }, // Pega os valores padrão
-                        ...(await getDoc(itemStatusRef)).data()?.[itemId], // Pega os valores existentes
-                        [field]: value // Sobrescreve o campo específico
-                    }
-                };
-                await updateDoc(itemStatusRef, updateData, { merge: true });
-                console.log(`Disponibilidade de ${field} para o item ${itemId} salva com sucesso.`);
+                onSnapshot(itemStatusRef, (docSnap) => {
+                    const unavailableItems = docSnap.exists() ? docSnap.data() : {};
+                    cardapioData = items.map(item => {
+                        const status = unavailableItems[item.id] || {};
+                        return {
+                            ...item,
+                            available: status.available !== undefined ? status.available : true,
+                            meiaMeiaEnabled: status.meiaMeiaEnabled !== undefined ? status.meiaMeiaEnabled : true,
+                            visible: status.visible !== undefined ? status.visible : true,
+                        };
+                    });
+                    
+                    // Filter and render initial view
+                    filterAndRender();
+                    loadingOverlay.style.display = 'none';
+                });
+
             } catch (error) {
-                console.error("Erro ao salvar disponibilidade:", error);
-                showMessageModal('Erro ao salvar a disponibilidade. Verifique o console.', false);
+                console.error('Erro ao buscar ou renderizar dados:', error);
+                loadingOverlay.style.display = 'none';
             }
         }
 
-        function filterItems() {
-            const activeTabPanel = document.querySelector('.tab-panel.active');
-            const searchText = searchInput.value.toLowerCase();
-            const filterStatus = document.querySelector('.filter-btn.active').textContent;
+        // Function to update Firestore for item status
+        async function updateItemStatus(itemId, newStatus) {
+            const itemStatusRef = doc(db, "config", "item_status");
+            const updateData = {};
+            updateData[`${itemId}.available`] = newStatus;
 
-            activeTabPanel.querySelectorAll('.availability-row').forEach(row => {
-                const itemName = row.dataset.name;
-                const isAvailable = row.dataset.available === 'true';
-                const isVisible = row.dataset.visible === 'true';
+            try {
+                await updateDoc(itemStatusRef, updateData, { merge: true });
+                console.log(`Status de disponibilidade de ${itemId} atualizado para ${newStatus}`);
+            } catch (e) {
+                console.error("Erro ao atualizar o status: ", e);
+            }
+        }
+        
+        // NEW FUNCTION: Update Firestore for half-pizza status
+        async function updateMeiaMeiaStatus(itemId, newStatus) {
+            const itemStatusRef = doc(db, "config", "item_status");
+            const updateData = {};
+            updateData[`${itemId}.meiaMeiaEnabled`] = newStatus;
 
-                const nameMatch = itemName.includes(searchText);
-                let statusMatch;
+            try {
+                await updateDoc(itemStatusRef, updateData, { merge: true });
+                console.log(`Status de meia a meia de ${itemId} atualizado para ${newStatus}`);
+            } catch (e) {
+                console.error("Erro ao atualizar o status de meia a meia: ", e);
+            }
+        }
 
-                switch (filterStatus) {
+        // Function to update Firestore for item visibility
+        async function updateItemVisibility(itemId, newVisibility) {
+            const itemStatusRef = doc(db, "config", "item_status");
+            const updateData = {};
+            updateData[`${itemId}.visible`] = newVisibility;
+
+            try {
+                await updateDoc(itemStatusRef, updateData, { merge: true });
+                console.log(`Visibilidade de ${itemId} atualizada para ${newVisibility}`);
+            } catch (e) {
+                console.error("Erro ao atualizar a visibilidade: ", e);
+            }
+        }
+
+        // Filter and render items based on search and filters
+        function filterAndRender() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const activeTab = document.querySelector('.tab-btn.active');
+            const category = activeTab.textContent.trim().toLowerCase();
+            const activeStatusBtn = document.querySelector('#filter-status-container .filter-btn.active');
+            const statusFilter = activeStatusBtn.dataset.status;
+
+            filteredCardapioData[category] = cardapioData.filter(item => {
+                const nameMatch = item.name.toLowerCase().includes(searchTerm) || (item.category && item.category.toLowerCase().includes(searchTerm));
+                const categoryMatch = item.category.toLowerCase() === category || (category === 'pizzas' && item.category.toLowerCase() === 'pizzas-inteiras');
+                
+                let statusMatch = false;
+                switch (statusFilter) {
                     case 'Disponíveis':
-                        statusMatch = isVisible && isAvailable;
+                        statusMatch = item.visible && item.available;
                         break;
                     case 'Esgotados':
-                        statusMatch = isVisible && !isAvailable;
+                        statusMatch = item.visible && !item.available;
                         break;
                     case 'Ocultos':
-                        statusMatch = !isVisible;
+                        statusMatch = !item.visible;
                         break;
                     default: // 'Todos'
                         statusMatch = true;
                 }
-
-                if (nameMatch && statusMatch) {
-                    row.style.display = 'flex';
-                } else {
-                    row.style.display = 'none';
-                }
+                
+                return nameMatch && categoryMatch && statusMatch;
             });
-
-            activeTabPanel.querySelectorAll('[data-category-group]').forEach(titleDiv => {
-                const hasVisibleItems = Array.from(titleDiv.querySelectorAll('.availability-row')).some(row => row.style.display !== 'none');
-                titleDiv.style.display = hasVisibleItems ? 'block' : 'none';
-            });
+            renderItems(filteredCardapioData[category], category);
         }
 
+        // Render function
+        function renderItems(items, category) {
+            const panel = document.getElementById(`${category}-panel`);
+            if (!panel) return;
+            panel.innerHTML = '';
+            
+            const groupedItems = groupByCategory(items);
+            
+            for (const group in groupedItems) {
+                const groupDiv = document.createElement('div');
+                groupDiv.classList.add('bg-white', 'p-4', 'rounded-lg', 'shadow-md', 'mb-4', 'availability-group');
+                groupDiv.innerHTML = `<h2 class="text-xl font-bold mb-4 text-gray-800" data-category-group>${group}</h2>`;
+
+                groupedItems[group].forEach(item => {
+                    const rowDiv = document.createElement('div');
+                    rowDiv.classList.add('availability-row');
+                    rowDiv.dataset.itemId = item.id;
+                    rowDiv.dataset.itemCategory = item.category;
+
+                    const visibilityChecked = item.visible ? 'checked' : '';
+                    const availabilityChecked = item.available ? 'checked' : '';
+                    const meiaMeiaChecked = item.meiaMeiaEnabled ? 'checked' : '';
+
+                    rowDiv.innerHTML = `
+                        <div class="availability-row-text-container">
+                            <h3 class="font-medium text-gray-800">${item.name}</h3>
+                            <p class="text-sm text-gray-500">
+                                Preço: R$ ${parseFloat(item.price).toFixed(2).replace('.', ',')}
+                            </p>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            ${(item.category && item.category.toLowerCase() === 'pizzas-inteiras') ? `
+                                <div class="flex flex-col items-center">
+                                    <span class="text-xs text-gray-500">Meia Pizza</span>
+                                    <label class="switch">
+                                        <input type="checkbox" data-action="toggle-meia-meia" ${meiaMeiaChecked}>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                            ` : ''}
+                            <div class="flex flex-col items-center">
+                                <span class="text-xs text-gray-500">Disponível</span>
+                                <label class="switch">
+                                    <input type="checkbox" data-action="toggle-available" ${availabilityChecked}>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="flex flex-col items-center">
+                                <span class="text-xs text-gray-500">Visível</span>
+                                <label class="switch">
+                                    <input type="checkbox" data-action="toggle-visible" ${visibilityChecked}>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    `;
+                    groupDiv.appendChild(rowDiv);
+                });
+                panel.appendChild(groupDiv);
+            }
+            
+            setupItemEventListeners();
+        }
+        
+        function setupItemEventListeners() {
+            const panel = document.querySelector('.tab-panel.active');
+            if (!panel) return;
+            
+            panel.querySelectorAll('input[type="checkbox"]').forEach(input => {
+                input.addEventListener('change', (e) => {
+                    const itemId = e.target.closest('.availability-row').dataset.itemId;
+                    const action = e.target.dataset.action;
+                    const isChecked = e.target.checked;
+                    
+                    if (action === 'toggle-available') {
+                        updateItemStatus(itemId, isChecked);
+                    } else if (action === 'toggle-visible') {
+                        updateItemVisibility(itemId, isChecked);
+                    } else if (action === 'toggle-meia-meia') {
+                        updateMeiaMeiaStatus(itemId, isChecked);
+                    }
+                });
+            });
+        }
+        
         function groupByCategory(items) {
             if (!Array.isArray(items)) return {};
             return items.reduce((acc, item) => {
@@ -424,6 +447,5 @@
         }
 
     </script>
-
 </body>
 </html>
