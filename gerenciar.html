@@ -134,7 +134,7 @@
             db = getFirestore(app);
             auth = getAuth(app);
         } catch (e) {
-            console.error("Erro ao inicializar o Firebase. Verifique se as variáveis de ambiente estão configuradas.", e);
+            console.error("Erro ao inicializar o Firebase. Verifique sua conexão ou configuração.", e);
             document.body.innerHTML = '<div class="text-center p-8 text-red-600">Erro: Não foi possível carregar a aplicação. Por favor, recarregue a página ou entre em contato com o suporte.</div>';
         }
 
@@ -207,8 +207,6 @@
 
             const itemStatusRef = doc(db, "config", "item_status");
             const ingredientStatusRef = doc(db, "config", "ingredient_status");
-            const itemVisibilityRef = doc(db, "config", "item_visibility");
-            const ingredientVisibilityRef = doc(db, "config", "ingredient_visibility");
 
             onSnapshot(itemStatusRef, (docSnap) => {
                 const config = docSnap.exists() ? docSnap.data() : {};
@@ -302,7 +300,7 @@
                 </div>
             `;
 
-            // NOVO: Adiciona o listener para o novo switch de "meia a meia"
+            // NOVO: Adiciona o listener para o switch de "meia a meia"
             if (isPizza) {
                 const halfHalfSwitch = row.querySelector(`#half-half-${item.id}`);
                 halfHalfSwitch.addEventListener('change', async (e) => {
@@ -438,7 +436,6 @@
         searchInput.addEventListener('input', filterAndRender);
         statusFilter.addEventListener('change', filterAndRender);
         categoryFilter.addEventListener('change', filterAndRender);
-
     </script>
 </body>
 </html>
