@@ -138,32 +138,37 @@ export default async (req, res) => {
 
         // Busca as configurações de disponibilidade do Firestore
         const itemStatusRef = doc(db, "config", "item_status");
-        const pizzaHalfStatusRef = doc(db, "config", "pizza_half_status"); // NOVO
+        const itemVisibilityRef = doc(db, "config", "item_visibility");
+        const pizzaHalfStatusRef = doc(db, "config", "pizza_half_status");
 
-        const [itemStatusSnap, pizzaHalfStatusSnap] = await Promise.all([
+        const [itemStatusSnap, itemVisibilitySnap, pizzaHalfStatusSnap] = await Promise.all([
             getDoc(itemStatusRef),
-            getDoc(pizzaHalfStatusRef) // NOVO
+            getDoc(itemVisibilityRef),
+            getDoc(pizzaHalfStatusRef)
         ]);
 
         const unavailableItems = itemStatusSnap.exists() ? itemStatusSnap.data() : {};
-        const halfPizzaStatus = pizzaHalfStatusSnap.exists() ? pizzaHalfStatusSnap.data() : {}; // NOVO
+        const hiddenItems = itemVisibilitySnap.exists() ? itemVisibilitySnap.data() : {};
+        const halfPizzaStatus = pizzaHalfStatusSnap.exists() ? pizzaHalfStatusSnap.data() : {};
 
-        // Aplica as configurações do Firestore aos itens do cardápio
-        cardapioJson = cardapioJson.map(item => {
-            const isUnavailable = unavailableItems[item.id] === false;
-            
-            const updatedItem = {
-                ...item,
-                available: !isUnavailable // A propriedade 'available' agora reflete o status do Firestore
-            };
+        // Aplica as configurações do Firestore: primeiro filtra, depois mapeia
+        cardapioJson = cardapioJson
+            .filter(item => hiddenItems[item.id] !== false) // 1. Filtra os itens que não estão explicitamente ocultos
+            .map(item => {
+                const isUnavailable = unavailableItems[item.id] === false;
+                
+                const updatedItem = {
+                    ...item,
+                    available: !isUnavailable // 2. Define a disponibilidade
+                };
 
-            // NOVO: Adiciona a propriedade 'allowHalf' para pizzas
-            if (item.isPizza) {
-                updatedItem.allowHalf = halfPizzaStatus[item.id] !== false; // Padrão é true
-            }
+                // 3. Define a permissão de meia a meia para pizzas
+                if (item.isPizza) {
+                    updatedItem.allowHalf = halfPizzaStatus[item.id] !== false; // Padrão é true (permite)
+                }
 
-            return updatedItem;
-        });
+                return updatedItem;
+            });
 
         res.status(200).json({
             cardapio: cardapioJson,
