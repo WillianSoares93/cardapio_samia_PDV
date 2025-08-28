@@ -1516,7 +1516,6 @@
                             }
                         }
                         
-                        // NOVO: Adiciona a verificação de 'allowHalf'
                         if (item && item.allowHalf === false) {
                             disable = true;
                         }
@@ -1580,7 +1579,6 @@
                         return;
                     }
                     
-                    // NOVO: Verifica se o segundo sabor permite meia a meia
                     if (item.allowHalf === false) {
                         showMessageModal(`O sabor "${item.name}" não está disponível para meia a meia.`);
                         return;
@@ -1647,8 +1645,7 @@
                         const optionDiv = document.createElement('div');
                         optionDiv.className = 'pizza-size-option';
                         
-                        // NOVO: Lógica para desabilitar o botão de meia pizza
-                        const allowsHalf = currentPizzaData.allowHalf !== false; // Padrão é true
+                        const allowsHalf = currentPizzaData.allowHalf !== false;
                         let halfPizzaButtonHtml = `
                             <button class="add-half-size-pizza-btn px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition"
                                     data-slices="${size.slices}" data-price-key="${size.priceKey}">
