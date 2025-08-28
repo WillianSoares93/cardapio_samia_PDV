@@ -1,5 +1,5 @@
 // Este arquivo é uma função Serverless para o Vercel.
-// Ele foi atualizado para ler a nova coluna "preço 10 fatias" da planilha.
+// Ele foi atualizado para ler a nova planilha de ingredientes de pizza.
 
 import fetch from 'node-fetch';
 import { initializeApp, getApps, getApp } from "firebase/app";
@@ -30,6 +30,8 @@ const PROMOCOES_CSV_URL = 'https://docs.google.com/spreadsheets/d/1RERYG8TDuibOa
 const DELIVERY_FEES_CSV_URL = 'https://docs.google.com/spreadsheets/d/1RERYG8TDuibOadfLJAHAoc8I64hMrLkDmoIcnVOdJZ0/export?format=csv&gid=1298581759';
 const INGREDIENTES_HAMBURGUER_CSV_URL = 'https://docs.google.com/spreadsheets/d/1RERYG8TDuibOadfLJAHAoc8I64hMrLkDmoIcnVOdJZ0/export?format=csv&gid=679334079';
 const CONTACT_CSV_URL = 'https://docs.google.com/spreadsheets/d/1RERYG8TDuibOadfLJAHAoc8I64hMrLkDmoIcnVOdJZ0/export?format=csv&gid=1022597597';
+const INGREDIENTES_PIZZA_CSV_URL = 'https://docs.google.com/spreadsheets/d/1RERYG8TDuibOadfLJAHAoc8I64hMrLkDmoIcnVOdJZ0/export?format=csv&gid=793391272';
+
 
 // Leitor de linha CSV robusto que lida com vírgulas dentro de aspas
 function parseCsvLine(line) {
@@ -77,7 +79,11 @@ function parseCsvData(csvText) {
             'id intem': 'id', 'ingredientes': 'name', 'preço': 'price', 'seleção única': 'isSingleChoice',
             'limite': 'limit', 'limite ingrediente': 'ingredientLimit',
             'é obrigatório?(sim/não)': 'isRequired', 'disponível': 'available',
-            'dados': 'data', 'valor': 'value'
+            'dados': 'data', 'valor': 'value',
+            // Mapeamentos para Adicionais_pizza
+            'adicionais': 'name',
+            'limite adicionais': 'ingredientLimit',
+            'limite categoria': 'limit'
         };
         const cleanHeader = header.trim().toLowerCase();
         return headerMapping[cleanHeader] || cleanHeader.replace(/\s/g, '').replace(/[^a-z0-9]/g, '');
@@ -115,9 +121,17 @@ export default async (req, res) => {
 
     try {
         const fetchData = async (url) => {
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`Falha ao buscar dados de ${url}`);
-            return response.text();
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    console.warn(`Aviso: Falha ao buscar dados de ${url}. A API continuará sem eles.`);
+                    return ''; // Retorna string vazia em caso de falha para não quebrar o Promise.all
+                }
+                return response.text();
+            } catch (error) {
+                console.warn(`Aviso: Erro de rede ao buscar ${url}: ${error.message}. A API continuará sem eles.`);
+                return ''; // Retorna string vazia em caso de erro de rede
+            }
         };
 
         const [
@@ -125,16 +139,19 @@ export default async (req, res) => {
             promocoesCsv,
             deliveryFeesCsv,
             ingredientesHamburguerCsv,
-            contactCsv
+            contactCsv,
+            ingredientesPizzaCsv // NOVO
         ] = await Promise.all([
             fetchData(CARDAPIO_CSV_URL),
             fetchData(PROMOCOES_CSV_URL),
             fetchData(DELIVERY_FEES_CSV_URL),
             fetchData(INGREDIENTES_HAMBURGUER_CSV_URL),
-            fetchData(CONTACT_CSV_URL)
+            fetchData(CONTACT_CSV_URL),
+            fetchData(INGREDIENTES_PIZZA_CSV_URL) // NOVO
         ]);
 
         let cardapioJson = parseCsvData(cardapioCsv);
+        let ingredientesPizzaJson = parseCsvData(ingredientesPizzaCsv); // NOVO
 
         // Busca as configurações de disponibilidade do Firestore
         const itemStatusRef = doc(db, "config", "item_status");
@@ -175,7 +192,8 @@ export default async (req, res) => {
             promocoes: parseCsvData(promocoesCsv),
             deliveryFees: parseCsvData(deliveryFeesCsv),
             ingredientesHamburguer: parseCsvData(ingredientesHamburguerCsv),
-            contact: parseCsvData(contactCsv)
+            contact: parseCsvData(contactCsv),
+            ingredientesPizza: ingredientesPizzaJson // NOVO
         });
 
     } catch (error) {
