@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Laudo Técnico - Projeto Sâmia (Cardápio + PDV)</title>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #111827; padding: 24px; }
+    h1, h2, h3 { color: #111827; margin-top: 1.2em; }
+    h1 { font-size: 24px; }
+    h2 { font-size: 20px; }
+    h3 { font-size: 16px; }
+    .small { color: #6b7280; font-size: 0.9rem; }
+    ul { margin-top: 0.25rem; }
+    li { margin-bottom: 0.25rem; }
+    .muted { color:#6b7280; }
+    .section { page-break-inside: avoid; }
+    .pagebreak { page-break-before: always; }
+    .code { background:#f9fafb; border:1px solid #e5e7eb; border-radius:6px; padding:10px; overflow:auto; font-family: monospace; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Laudo Técnico do Projeto: Sâmia - Cardápio Online + PDV</h1>
+  <p class="small">Escopo: análise técnica completa do repositório, arquitetura, fluxos e integrações.</p>
+
+  <div class="section">
+    <h2>1. Objetivo do Projeto</h2>
+    <p>Disponibilizar um sistema completo de cardápio online (PWA) e um PDV em tempo real para operação de pizzaria/hamburgueria, incluindo telas de cliente, atendente e gestão, com backend leve via funções serverless, integração com Google Sheets e Firebase (Auth e Firestore) e envio do pedido via WhatsApp.</p>
+  </div>
+
+  <div class="section">
+    <h2>2. Estrutura de Pastas e Arquivos</h2>
+    <ul>
+      <li><b>index.html</b>: Cardápio público PWA.</li>
+      <li><b>pdv.html</b>: Painel PDV (delivery, retirada, mesas) com métricas e colunas por status.</li>
+      <li><b>atendente.html</b>: Lançamento de pedido manual (mesas/delivery) com modais e construtor de hambúrguer.</li>
+      <li><b>gerenciar.html</b>: Gestão de disponibilidade e visibilidade (acesso autenticado).</li>
+      <li><b>login.html</b>: Autenticação (Firebase Auth) e recuperação de senha.</li>
+      <li><b>service-worker.js</b>: SW para cache com estratégia Stale-While-Revalidate.</li>
+      <li><b>manifest.json</b>: Manifesto PWA.</li>
+      <li><b>api/menu.js</b>: Lê Google Sheets (CSV) e flags do Firestore, retorna JSON consolidado.</li>
+      <li><b>api/criar-pedido.js</b>: Grava pedido no Firestore e retorna link wa.me do WhatsApp.</li>
+      <li><b>package.json</b>: Dependências (<code>firebase</code>, <code>node-fetch</code>) e ESM.</li>
+      <li><b>README.md</b>: Contém diagrama Mermaid do fluxo.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>3. Tecnologias</h2>
+    <ul>
+      <li><b>Frontend</b>: HTML estático, Tailwind CSS (CDN), Font Awesome, Google Fonts, QRCodeJS.</li>
+      <li><b>PWA</b>: manifest.json + service-worker.js.</li>
+      <li><b>Backend</b>: Funções Serverless (pasta <code>api/</code>), padrão Vercel.</li>
+      <li><b>Firebase</b>: Auth (login) e Firestore (pedidos e config).</li>
+      <li><b>Google Sheets</b>: Fonte de dados via CSV público (export?format=csv&amp;gid=...).</li>
+      <li><b>Integração</b>: WhatsApp (link wa.me).</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>4. Fluxos Principais</h2>
+    <h3>4.1 Cardápio (index.html)</h3>
+    <ul>
+      <li>Registra PWA (manifest + Service Worker).</li>
+      <li>Busca <code>/api/menu</code> e renderiza cardápio, promoções, taxas, ingredientes e contato.</li>
+      <li>Ouve <code>config/*</code> via <code>onSnapshot</code> para aplicar disponibilidade/visibilidade em tempo real.</li>
+      <li>Finaliza pedido via <code>/api/criar-pedido</code> e abre link do WhatsApp.</li>
+    </ul>
+    <h3>4.2 Atendente (atendente.html)</h3>
+    <ul>
+      <li>Carrega <code>/api/menu</code>, monta itens, seleciona mesas/delivery/retirada e salva via <code>/api/criar-pedido</code>.</li>
+    </ul>
+    <h3>4.3 PDV (pdv.html)</h3>
+    <ul>
+      <li>Ouve <code>pedidos</code> no Firestore com <code>onSnapshot</code> e organiza em colunas por status e abas por tipo.</li>
+      <li>Calcula métricas diárias e gerencia agrupamento de mesas.</li>
+    </ul>
+    <h3>4.4 Gerenciar (gerenciar.html)</h3>
+    <ul>
+      <li>Autenticado por Firebase Auth; carrega <code>/api/menu</code> para listar itens/ingredientes.</li>
+      <li>Ouve e atualiza <code>config/*</code> (status/visibilidade) no Firestore.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>5. Endpoints</h2>
+    <h3>/api/menu</h3>
+    <ul>
+      <li>Leituras paralelas de CSVs do Google Sheets (cardápio, promoções, taxas, ingredientes, contato).</li>
+      <li>Parser CSV robusto lida com vírgulas em aspas e mapeia cabeçalhos.</li>
+      <li>Aplica <code>config/item_status</code> do Firestore sobre o cardápio.</li>
+      <li>Retorna JSON: <code>{ cardapio, promocoes, deliveryFees, ingredientesHamburguer, contact }</code>.</li>
+    </ul>
+    <h3>/api/criar-pedido</h3>
+    <ul>
+      <li>Valida payload, grava em <code>pedidos</code> (Firestore) com <code>serverTimestamp()</code>.</li>
+      <li>Monta mensagem consolidada e retorna <code>whatsappUrl</code> (wa.me) mesmo se a gravação falhar.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>6. Armazenamento</h2>
+    <ul>
+      <li><b>Google Sheets</b>: CSV público (cardápio, promoções, taxas, ingredientes, contato).</li>
+      <li><b>Firestore</b>:
+        <ul>
+          <li><code>pedidos</code>: itens, endereço, totals, pagamento, status, criadoEm.</li>
+          <li><code>config/*</code>: item_status, item_visibility, ingredient_status, ingredient_visibility.</li>
+        </ul>
+      </li>
+      <li><b>PWA Cache</b>: estratégia SWR no <code>service-worker.js</code>.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>7. Segurança e Considerações</h2>
+    <ul>
+      <li>Config do Firebase exposta no frontend (padrão); garantir regras de Firestore adequadas.</li>
+      <li>Ícones/imagens por URLs remotas (GitHub): considerar CDN própria/Storage.</li>
+      <li>Garantir compartilhamento correto de Sheets (Leitor, link público).</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>8. PWA</h2>
+    <ul>
+      <li><b>manifest.json</b>: nome, ícones, tema, display.</li>
+      <li><b>service-worker.js</b>: cache inicial + fetch com stale-while-revalidate e limpeza de versões antigas.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>9. Recomendações de Continuidade</h2>
+    <ul>
+      <li>Testes de integração para <code>/api/*</code> e regras do Firestore.</li>
+      <li>Variáveis de ambiente para URLs/chaves quando possível.</li>
+      <li>Mecanismo de retentativa/fila para gravação de pedidos em falhas temporárias.</li>
+      <li>Observabilidade (erros e métricas) nas funções e telas internas.</li>
+      <li>Revisar UX e performance do PDV (virtualização, paginação, filtros).</li>
+    </ul>
+  </div>
+
+  <div class="section pagebreak">
+    <h2>10. Instruções para Exportar este Laudo para PDF</h2>
+    <h3>Navegador</h3>
+    <ol>
+      <li>Abrir <b>LAUDO_TECNICO.html</b> no navegador.</li>
+      <li>Pressionar <b>Ctrl + P</b> (ou Cmd + P no macOS).</li>
+      <li>Destino: "Salvar como PDF"; Margens: Padrão; Cabeçalhos/Rodapés: opcional.</li>
+      <li>Salvar.</li>
+    </ol>
+    <h3>Headless (se disponível)</h3>
+    <div class="code">google-chrome --headless --disable-gpu \
+--print-to-pdf=LAUDO_TECNICO.pdf \
+file://$PWD/LAUDO_TECNICO.html</div>
+  </div>
+
+</body>
+</html>
