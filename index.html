@@ -1127,7 +1127,17 @@
                 });
                 onSnapshot(doc(db, "config", "pizza_half_status"), (doc) => {
                     pizzaHalfStatus = doc.exists() ? doc.data() : {};
-                    updateUI();
+                    allMenuData.forEach(item => {
+                        if (item.isPizza) {
+                            item.allowHalf = pizzaHalfStatus[item.id] !== false;
+                        }
+                    });
+                    if (pizzaOptionModal.style.display === 'flex' && currentPizzaData.id) {
+                        const updatedPizza = allMenuData.find(p => p.id === currentPizzaData.id);
+                        if (updatedPizza) {
+                            renderPizzaOptions(updatedPizza);
+                        }
+                    }
                 });
                 onSnapshot(doc(db, "config", "ingredient_status"), (doc) => {
                     ingredientStatus = doc.exists() ? doc.data() : {};
@@ -1556,6 +1566,131 @@
                     }
                 });
             }
+            
+            function renderPizzaOptions(item) {
+                modalPizzaName.textContent = item.name;
+                modalPizzaDescription.textContent = item.description;
+                pizzaSizeOptions.innerHTML = '';
+                
+                const availableSizes = sizes.filter(size => item[size.priceKey] > 0);
+
+                if (availableSizes.length <= 2) {
+                    pizzaSizeOptions.classList.remove('sm:grid-cols-2', 'lg:grid-cols-4');
+                    pizzaSizeOptions.classList.add('sm:grid-cols-2');
+                } else {
+                    pizzaSizeOptions.classList.remove('sm:grid-cols-2');
+                    pizzaSizeOptions.classList.add('sm:grid-cols-2', 'lg:grid-cols-4');
+                }
+
+                availableSizes.forEach(size => {
+                    const sizePrice = item[size.priceKey];
+                    const optionDiv = document.createElement('div');
+                    optionDiv.className = 'pizza-size-option';
+                    
+                    const allowsHalf = pizzaHalfStatus[item.id] !== false;
+                    
+                    const fullPizzaButtonHtml = `
+                        <button class="add-full-size-pizza-btn px-4 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700 transition w-full"
+                                data-slices="${size.slices}" data-price-key="${size.priceKey}">
+                            Adicionar Inteira
+                        </button>
+                    `;
+
+                    let halfPizzaButtonHtml = '';
+                    if (allowsHalf) {
+                        halfPizzaButtonHtml = `
+                            <button class="add-half-size-pizza-btn px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition w-full"
+                                    data-slices="${size.slices}" data-price-key="${size.priceKey}">
+                                Adicionar Meia Pizza
+                            </button>
+                        `;
+                    } else {
+                         halfPizzaButtonHtml = `
+                            <button class="add-half-size-pizza-btn px-4 py-2 bg-gray-400 text-white rounded-md text-sm cursor-not-allowed w-full"
+                                    disabled>
+                                Adicionar Meia Pizza
+                            </button>
+                        `;
+                    }
+
+                    let halfPizzaMessageHtml = '';
+                    if (!allowsHalf) {
+                        halfPizzaMessageHtml = `<div class="text-xs text-center text-gray-500 mt-1 h-6">Este sabor não permite meia a meia.</div>`;
+                    } else {
+                        halfPizzaMessageHtml = `<div class="h-6 mt-1"></div>`;
+                    }
+                    
+                    optionDiv.innerHTML = `
+                        <span class="font-bold text-base text-gray-800">${size.label}</span>
+                        <span class="font-bold text-red-600 text-lg mb-2">R$ ${sizePrice.toFixed(2).replace('.', ',')}</span>
+                        <div class="flex flex-col gap-2 mt-2 w-full">
+                            ${fullPizzaButtonHtml}
+                            ${halfPizzaButtonHtml}
+                        </div>
+                        ${halfPizzaMessageHtml}
+                    `;
+                    pizzaSizeOptions.appendChild(optionDiv);
+
+                    optionDiv.querySelector('.add-full-size-pizza-btn').addEventListener('click', function() {
+                        const selectedSlices = parseInt(this.dataset.slices);
+                        const selectedPriceKey = this.dataset.priceKey;
+                        const newName = `${selectedSlices} FATIAS: ${currentPizzaData.name}`;
+                        addToOrder({
+                            type: 'full', name: newName, price: currentPizzaData[selectedPriceKey], 
+                            description: currentPizzaData.description,
+                            category: formatPizzaCategory(currentPizzaData.category),
+                            selected_slices: selectedSlices
+                        }, this, currentPizzaData.imageUrl); 
+                        pizzaOptionModal.style.display = 'none';
+                        updatePromotionButtonVisibility(); 
+                    });
+
+                    const halfPizzaBtn = optionDiv.querySelector('.add-half-size-pizza-btn');
+                    if (halfPizzaBtn && !halfPizzaBtn.disabled) {
+                        halfPizzaBtn.addEventListener('click', function() {
+                            const selectedSlices = parseInt(this.dataset.slices);
+                            const selectedPriceKey = this.dataset.priceKey;
+                            firstHalfPizza = {
+                                name: currentPizzaData.name,
+                                price: currentPizzaData[selectedPriceKey] / 2, 
+                                description: currentPizzaData.description,
+                                original_full_price: currentPizzaData[selectedPriceKey], 
+                                selected_slices: selectedSlices,
+                                priceKeyForSlices: selectedPriceKey, 
+                                category: currentPizzaData.category 
+                            };
+                            isSelectingSecondHalf = true;
+                            isSelectingHalfPizza = true; 
+                            isFirstHalfPromotional = (currentPizzaData.category.toLowerCase() === 'promocionais'); 
+                            pizzaOptionModal.style.display = 'none';
+                            updatePromotionButtonVisibility(); 
+
+                            toggleAddItemButtons(false); 
+                            toggleCategoryButtons(false); 
+                            
+                            addToOrderOnly({
+                                type: 'half_pending', name: `½ ${currentPizzaData.name}`,
+                                price: currentPizzaData[selectedPriceKey] / 2,
+                                description: `Primeira metade: ${currentPizzaData.description}`,
+                                id: 'pending-half-pizza',
+                                category: formatPizzaCategory(currentPizzaData.category),
+                                selected_slices: selectedSlices
+                            }, this, currentPizzaData.imageUrl);
+                            
+                            setTimeout(() => {
+                                showMessageModal('Agora, escolha a segunda metade da sua pizza.'); 
+                            }, 100);
+                        });
+                    }
+                });
+            }
+
+            function openPizzaOptionsModal(item) {
+                currentPizzaData = { ...item };
+                renderPizzaOptions(item);
+                pizzaOptionModal.style.display = 'flex';
+                promotionButton.style.display = 'none';
+            }
 
             function handleAddButtonClick(e) {
                 const clickedButton = e.target; 
@@ -1622,126 +1757,7 @@
                     showTemporaryFeedback('Pizza meio a meia adicionada ao pedido!', 'bg-green-500'); 
                     
                 } else if (item.isPizza) {
-                    currentPizzaData = { ...item }; 
-                    modalPizzaName.textContent = item.name;
-                    modalPizzaDescription.textContent = item.description;
-
-                    pizzaSizeOptions.innerHTML = '';
-                    
-                    const availableSizes = sizes.filter(size => currentPizzaData[size.priceKey] > 0);
-
-                    if (availableSizes.length <= 2) {
-                        pizzaSizeOptions.classList.remove('sm:grid-cols-2', 'lg:grid-cols-4');
-                        pizzaSizeOptions.classList.add('sm:grid-cols-2');
-                    } else {
-                        pizzaSizeOptions.classList.remove('sm:grid-cols-2');
-                        pizzaSizeOptions.classList.add('sm:grid-cols-2', 'lg:grid-cols-4');
-                    }
-
-                    availableSizes.forEach(size => {
-                        const sizePrice = currentPizzaData[size.priceKey];
-                        const optionDiv = document.createElement('div');
-                        optionDiv.className = 'pizza-size-option';
-                        
-                        const allowsHalf = pizzaHalfStatus[currentPizzaData.id] !== false;
-                        
-                        const fullPizzaButtonHtml = `
-                            <button class="add-full-size-pizza-btn px-4 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700 transition w-full"
-                                    data-slices="${size.slices}" data-price-key="${size.priceKey}">
-                                Adicionar Inteira
-                            </button>
-                        `;
-
-                        let halfPizzaButtonHtml = '';
-                        if (allowsHalf) {
-                            halfPizzaButtonHtml = `
-                                <button class="add-half-size-pizza-btn px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition w-full"
-                                        data-slices="${size.slices}" data-price-key="${size.priceKey}">
-                                    Adicionar Meia Pizza
-                                </button>
-                            `;
-                        } else {
-                             halfPizzaButtonHtml = `
-                                <button class="add-half-size-pizza-btn px-4 py-2 bg-gray-400 text-white rounded-md text-sm cursor-not-allowed w-full"
-                                        disabled>
-                                    Adicionar Meia Pizza
-                                </button>
-                            `;
-                        }
-
-                        let halfPizzaMessageHtml = '';
-                        if (!allowsHalf) {
-                            halfPizzaMessageHtml = `<div class="text-xs text-center text-gray-500 mt-1 h-6">Este sabor não permite meia a meia.</div>`;
-                        } else {
-                            halfPizzaMessageHtml = `<div class="h-6 mt-1"></div>`;
-                        }
-                        
-                        optionDiv.innerHTML = `
-                            <span class="font-bold text-base text-gray-800">${size.label}</span>
-                            <span class="font-bold text-red-600 text-lg mb-2">R$ ${sizePrice.toFixed(2).replace('.', ',')}</span>
-                            <div class="flex flex-col gap-2 mt-2 w-full">
-                                ${fullPizzaButtonHtml}
-                                ${halfPizzaButtonHtml}
-                            </div>
-                            ${halfPizzaMessageHtml}
-                        `;
-                        pizzaSizeOptions.appendChild(optionDiv);
-
-                        optionDiv.querySelector('.add-full-size-pizza-btn').addEventListener('click', function() {
-                            const selectedSlices = parseInt(this.dataset.slices);
-                            const selectedPriceKey = this.dataset.priceKey;
-                            const newName = `${selectedSlices} FATIAS: ${currentPizzaData.name}`;
-                            addToOrder({
-                                type: 'full', name: newName, price: currentPizzaData[selectedPriceKey], 
-                                description: currentPizzaData.description,
-                                category: formatPizzaCategory(currentPizzaData.category),
-                                selected_slices: selectedSlices
-                            }, this, currentPizzaData.imageUrl); 
-                            pizzaOptionModal.style.display = 'none';
-                            updatePromotionButtonVisibility(); 
-                        });
-
-                        const halfPizzaBtn = optionDiv.querySelector('.add-half-size-pizza-btn');
-                        if (halfPizzaBtn && !halfPizzaBtn.disabled) {
-                            halfPizzaBtn.addEventListener('click', function() {
-                                const selectedSlices = parseInt(this.dataset.slices);
-                                const selectedPriceKey = this.dataset.priceKey;
-                                firstHalfPizza = {
-                                    name: currentPizzaData.name,
-                                    price: currentPizzaData[selectedPriceKey] / 2, 
-                                    description: currentPizzaData.description,
-                                    original_full_price: currentPizzaData[selectedPriceKey], 
-                                    selected_slices: selectedSlices,
-                                    priceKeyForSlices: selectedPriceKey, 
-                                    category: currentPizzaData.category 
-                                };
-                                isSelectingSecondHalf = true;
-                                isSelectingHalfPizza = true; 
-                                isFirstHalfPromotional = (currentPizzaData.category.toLowerCase() === 'promocionais'); 
-                                pizzaOptionModal.style.display = 'none';
-                                updatePromotionButtonVisibility(); 
-
-                                toggleAddItemButtons(false); 
-                                toggleCategoryButtons(false); 
-                                
-                                addToOrderOnly({
-                                    type: 'half_pending', name: `½ ${currentPizzaData.name}`,
-                                    price: currentPizzaData[selectedPriceKey] / 2,
-                                    description: `Primeira metade: ${currentPizzaData.description}`,
-                                    id: 'pending-half-pizza',
-                                    category: formatPizzaCategory(currentPizzaData.category),
-                                    selected_slices: selectedSlices
-                                }, this, currentPizzaData.imageUrl);
-                                
-                                setTimeout(() => {
-                                    showMessageModal('Agora, escolha a segunda metade da sua pizza.'); 
-                                }, 100);
-                            });
-                        }
-                    });
-
-                    pizzaOptionModal.style.display = 'flex';
-                    promotionButton.style.display = 'none'; 
+                    openPizzaOptionsModal(item);
                 } else { 
                     addToOrder({
                         type: 'full',
