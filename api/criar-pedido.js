@@ -1,6 +1,11 @@
+// Este arquivo é uma função Serverless para o Vercel.
+// Ele foi atualizado para ler a nova coluna "preço 10 fatias" da planilha.
+
+import fetch from 'node-fetch';
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore, collection, addDoc, serverTimestamp } from "firebase/firestore";
 
+// Suas credenciais do Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyB9LJ-7bOvHGYyFE_H2Qd7XFcyjmSPq_ro",
   authDomain: "samia-cardapio.firebaseapp.com",
@@ -10,6 +15,7 @@ const firebaseConfig = {
   appId: "1:223260436641:web:adf78e77a0267f66f1e8e0"
 };
 
+// Inicializa o Firebase de forma segura (evita reinicialização)
 let app;
 if (!getApps().length) {
     app = initializeApp(firebaseConfig);
@@ -19,6 +25,17 @@ if (!getApps().length) {
 const db = getFirestore(app);
 
 export default async (req, res) => {
+    // Permite requisições de qualquer origem (CORS)
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    // Responde a requisições OPTIONS (pre-flight)
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+
+    // Apenas permite requisições POST
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method Not Allowed' });
     }
@@ -59,9 +76,8 @@ export default async (req, res) => {
             pdvError = String(firestoreError && firestoreError.message ? firestoreError.message : firestoreError);
             // Continua o fluxo para enviar ao WhatsApp mesmo assim
         }
-
-
-        // Monta a mensagem para o WhatsApp agrupando por categoria
+        
+        // Monta a mensagem para o WhatsApp com agrupamento por categoria
         const itemsByCategory = order.reduce((acc, item) => {
             const category = item.category || 'Outros';
             if (!acc[category]) {
@@ -73,27 +89,24 @@ export default async (req, res) => {
 
         let itemsText = '';
         for (const category in itemsByCategory) {
-            itemsText += `\n*-- ${category.toUpperCase()} --*\n`;
+            itemsText += `\n*${category.toUpperCase()}*\n`;
             itemsText += itemsByCategory[category].map(item => {
-                let itemDescription = `- *${item.name}* - R$ ${item.price.toFixed(2).replace('.', ',')}\n`;
-                if (item.type === 'custom_burger' && item.ingredients) {
-                    itemDescription += item.ingredients.map(ing => {
-                        const formattedName = ing.name.replace(/\(x\d+\)/g, match => `*${match}*`);
-                        return `        - ${formattedName}\n`;
-                    }).join('');
+                 let itemString = `  - ${item.name}`;
+                 if (item.extras && item.extras.length > 0) {
+                    const extrasString = item.extras.map(extra => `    + _${extra.name} (${extra.placement})_`).join('\n');
+                    itemString += `\n${extrasString}`;
                 }
-                return itemDescription;
-            }).join('');
+                return itemString;
+            }).join('\n');
+            itemsText += '\n';
         }
 
-        let paymentText = '';
+
+        let paymentText = `Pagamento: ${paymentMethod}`;
         if (typeof paymentMethod === 'object' && paymentMethod.method === 'Dinheiro') {
-            paymentText = `Pagamento: *Dinheiro*\nTroco para: *R$ ${paymentMethod.trocoPara.toFixed(2).replace('.', ',')}*\nTroco: *R$ ${paymentMethod.trocoTotal.toFixed(2).replace('.', ',')}*`;
-        } else {
-            paymentText = `Pagamento: *${paymentMethod}*`;
+            paymentText = `Pagamento: Dinheiro\nTroco para: R$ ${paymentMethod.trocoPara.toFixed(2).replace('.', ',')}`;
         }
-		
-        // NOVO: Cria a linha de desconto apenas se houver um desconto
+
         let discountText = '';
         if (total.discount && total.discount > 0) {
             discountText = `Desconto: - R$ ${total.discount.toFixed(2).replace('.', ',')}\n`;
@@ -101,7 +114,7 @@ export default async (req, res) => {
         
         let observationText = '';
         if (observation && observation.trim() !== '') {
-            observationText = `\n*OBSERVAÇÕES:*\n${observation.trim()}\n`;
+            observationText = `\n*OBSERVAÇÕES:*\n_${observation.trim()}_\n`;
         }
 
         const fullMessage = `
@@ -110,7 +123,6 @@ export default async (req, res) => {
 *Cliente:* ${selectedAddress.clientName}
 *Endereço:* ${selectedAddress.rua}, ${selectedAddress.numero} - ${selectedAddress.bairro}
 ${selectedAddress.referencia ? `*Referência:* ${selectedAddress.referencia}` : ''}
-
 ------------------------------------
 *PEDIDO:*
 ${itemsText}
@@ -118,7 +130,6 @@ ${itemsText}
 Subtotal: R$ ${total.subtotal.toFixed(2).replace('.', ',')}
 ${discountText}Taxa de Entrega: R$ ${total.deliveryFee.toFixed(2).replace('.', ',')}
 *Total: R$ ${total.finalTotal.toFixed(2).replace('.', ',')}*
-
 ${paymentText}
 ${observationText}
         `;
@@ -126,11 +137,11 @@ ${observationText}
         const targetNumber = `55${whatsappNumber.replace(/\D/g, '')}`;
         const whatsappUrl = `https://wa.me/${targetNumber}?text=${encodeURIComponent(fullMessage.trim())}`;
 
-        res.status(200).json({ success: true, whatsappUrl, pdvSaved, pdvError });
+        res.status(200).json({ whatsappUrl, pdvSaved, pdvError });
 
     } catch (error) {
-        console.error('Erro ao processar pedido:', error);
-        res.status(500).json({ error: 'Erro interno no servidor.' });
+        console.error("Erro na função criar-pedido:", error);
+        res.status(500).json({ error: 'Erro interno no servidor' });
     }
 };
 
