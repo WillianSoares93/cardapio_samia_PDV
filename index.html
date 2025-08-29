@@ -1064,6 +1064,7 @@
             ];
             
             function formatProductName(name, category) {
+                if (!category) return name;
                 const lowerCaseName = name.toLowerCase();
                 const lowerCaseCategory = category.toLowerCase().replace(/s$/, ''); // Remove 's' do final (ex: pizzas -> pizza)
                 if (!lowerCaseName.includes(lowerCaseCategory)) {
@@ -2709,7 +2710,7 @@
             }
             
             function showAskForExtrasModal(orderItemId, item) {
-                const formattedName = formatProductName(item.name, item.category);
+                const formattedName = formatProductName(item.name.split(': ')[1] || item.name, item.category);
                 askExtrasTitle.textContent = `Turbine a(o) ${formattedName} adicionando mais ingredientes!`;
                 askPizzaExtrasModal.dataset.orderItemId = orderItemId;
                 askPizzaExtrasModal.style.display = 'flex';
@@ -2717,7 +2718,7 @@
             
             function openPizzaExtrasBuilderModal(orderIndex) {
                 const pizzaItem = order[orderIndex];
-                if (!pizzaItem || (pizzaItem.type !== 'full' && pizzaItem.type !== 'split')) return;
+                if (!pizzaItem) return;
 
                 const formattedName = formatProductName(pizzaItem.name, pizzaItem.category);
                 pizzaExtrasBuilderTitle.textContent = `Adicionais para ${formattedName}`;
@@ -2745,23 +2746,24 @@
                         <button class="scope-button px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm" data-scope="metade2">2ª Metade: ${half2Name}</button>
                         <button class="scope-button px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm active" data-scope="toda">Pizza Toda</button>
                     `;
+                    
+                    scopeButtonsContainer.querySelectorAll('.scope-button').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            scopeButtonsContainer.querySelector('.active').classList.remove('active');
+                            btn.classList.add('active');
+                            renderPizzaExtrasList(orderIndex);
+                        });
+                    });
                 }
                 
-                scopeButtonsContainer.querySelectorAll('.scope-button').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        scopeButtonsContainer.querySelector('.active').classList.remove('active');
-                        btn.classList.add('active');
-                        renderPizzaExtrasList(orderIndex);
-                    });
-                });
-
                 renderPizzaExtrasList(orderIndex);
                 updatePizzaExtrasPrice(orderIndex);
                 pizzaExtrasBuilderModal.style.display = 'flex';
             }
 
             function renderPizzaExtrasList(orderIndex) {
-                const activeScope = document.querySelector('#pizza-extras-scope-buttons .active')?.dataset.scope || 'toda';
+                const activeScopeButton = document.querySelector('#pizza-extras-scope-buttons .active');
+                const activeScope = activeScopeButton ? activeScopeButton.dataset.scope : 'toda';
                 pizzaExtrasIngredientsContainer.innerHTML = '';
 
                 for (const categoryName in allPizzaIngredients) {
@@ -2792,7 +2794,8 @@
             }
 
             function handleExtraSelectionChange(checkbox, orderIndex, ingredient) {
-                const activeScope = document.querySelector('#pizza-extras-scope-buttons .active').dataset.scope;
+                const activeScopeButton = document.querySelector('#pizza-extras-scope-buttons .active');
+                const activeScope = activeScopeButton ? activeScopeButton.dataset.scope : 'toda';
                 
                 if (checkbox.checked) {
                     if (!currentPizzaExtrasState[activeScope].some(extra => extra.name === ingredient.name)) {
