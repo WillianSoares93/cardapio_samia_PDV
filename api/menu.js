@@ -146,25 +146,39 @@ export default async (req, res) => {
         let cardapioJson = parseCsvData(cardapioCsv, 'cardapio');
 
         const itemStatusRef = doc(db, "config", "item_status");
+        const itemVisibilityRef = doc(db, "config", "item_visibility");
         const itemExtrasRef = doc(db, "config", "item_extras_status");
+        const pizzaHalfStatusRef = doc(db, "config", "pizza_half_status");
         
-        const [itemStatusSnap, itemExtrasSnap] = await Promise.all([
+        const [
+            itemStatusSnap, 
+            itemVisibilitySnap,
+            itemExtrasSnap, 
+            pizzaHalfStatusSnap
+        ] = await Promise.all([
              getDoc(itemStatusRef),
-             getDoc(itemExtrasRef)
+             getDoc(itemVisibilityRef),
+             getDoc(itemExtrasRef),
+             getDoc(pizzaHalfStatusSnap)
         ]);
         
         const unavailableItems = itemStatusSnap.exists() ? itemStatusSnap.data() : {};
+        const hiddenItems = itemVisibilitySnap.exists() ? itemVisibilitySnap.data() : {};
         const itemExtrasStatus = itemExtrasSnap.exists() ? itemExtrasSnap.data() : {};
+        const pizzaHalfStatus = pizzaHalfStatusSnap.exists() ? pizzaHalfStatusSnap.data() : {};
 
-        cardapioJson = cardapioJson.map(item => {
-            const acceptsExtrasDefault = item.isPizza; // Padrão
-            const acceptsExtras = itemExtrasStatus[item.id] === undefined ? acceptsExtrasDefault : itemExtrasStatus[item.id];
+        cardapioJson = cardapioJson
+            .filter(item => hiddenItems[item.id] !== false) // Primeiro, remove os itens ocultos
+            .map(item => {
+                const isAvailable = unavailableItems[item.id] !== false;
+                
+                const acceptsExtrasDefault = item.isPizza; 
+                const acceptsExtras = itemExtrasStatus[item.id] === undefined ? acceptsExtrasDefault : itemExtrasStatus[item.id];
 
-            if (unavailableItems[item.id] === false) {
-                return { ...item, available: false, acceptsExtras };
-            }
-            return { ...item, acceptsExtras };
-        });
+                const allowsHalf = item.isPizza ? (pizzaHalfStatus[item.id] === undefined ? true : pizzaHalfStatus[item.id]) : false;
+
+                return { ...item, available: isAvailable, acceptsExtras, allowHalf };
+            });
 
         res.status(200).json({
             cardapio: cardapioJson,
@@ -180,3 +194,4 @@ export default async (req, res) => {
         res.status(500).json({ error: `Erro interno no servidor: ${error.message}` });
     }
 };
+
