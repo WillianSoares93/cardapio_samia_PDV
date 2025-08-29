@@ -1,5 +1,5 @@
 // Este arquivo é uma função Serverless para o Vercel.
-// Ele foi atualizado para ler a nova planilha de ingredientes de pizza.
+// Ele foi atualizado para ler a nova coluna "preço 10 fatias" da planilha.
 
 import fetch from 'node-fetch';
 import { initializeApp, getApps, getApp } from "firebase/app";
@@ -62,29 +62,33 @@ function parseCsvLine(line) {
 }
 
 // Função principal para converter texto CSV em um array de objetos JSON
-function parseCsvData(csvText) {
+function parseCsvData(csvText, type) {
     const lines = csvText.split('\n').filter(line => line.trim() !== '');
     if (lines.length < 2) return [];
 
     const headersRaw = parseCsvLine(lines[0]);
+    const headerMapping = {
+        'id item (único)': 'id', 'nome do item': 'name', 'descrição': 'description',
+        'preço 4 fatias': 'price4Slices', 'preço 6 fatias': 'price6Slices',
+        'preço 8 fatias': 'basePrice', 'preço 10 fatias': 'price10Slices',
+        'categoria': 'category', 'é pizza? (sim/não)': 'isPizza', 'é montável? (sim/não)': 'isCustomizable',
+        'disponível (sim/não)': 'available', 'imagem': 'imageUrl',
+        'id promocao': 'id', 'nome da promocao': 'name', 'preco promocional': 'promoPrice',
+        'id item aplicavel': 'itemId', 'ativo (sim/nao)': 'active',
+        'bairros': 'neighborhood', 'valor frete': 'deliveryFee',
+        'id intem': 'id', 'ingredientes': 'name', 'preço': 'price', 'seleção única': 'isSingleChoice',
+        'limite': 'limit', 'limite ingrediente': 'ingredientLimit',
+        'é obrigatório?(sim/não)': 'isRequired', 'disponível': 'available',
+        'dados': 'data', 'valor': 'value',
+        // Mapeamento para Ingredientes da Pizza
+        'adicionais': 'name', 'limite adicionais': 'limit', 'limite categoria': 'categoryLimit'
+    };
+     if (type === 'pizza_ingredients') {
+        headerMapping['id intem'] = 'id';
+    }
+
+
     const mappedHeaders = headersRaw.map(header => {
-        const headerMapping = {
-            'id item (único)': 'id', 'nome do item': 'name', 'descrição': 'description',
-            'preço 4 fatias': 'price4Slices', 'preço 6 fatias': 'price6Slices',
-            'preço 8 fatias': 'basePrice', 'preço 10 fatias': 'price10Slices',
-            'categoria': 'category', 'é pizza? (sim/não)': 'isPizza', 'é montável? (sim/não)': 'isCustomizable',
-            'disponível (sim/não)': 'available', 'imagem': 'imageUrl', 'id promocao': 'id',
-            'nome da promocao': 'name', 'preco promocional': 'promoPrice', 'id item aplicavel': 'itemId',
-            'ativo (sim/nao)': 'active', 'bairros': 'neighborhood', 'valor frete': 'deliveryFee',
-            'id intem': 'id', 'ingredientes': 'name', 'preço': 'price', 'seleção única': 'isSingleChoice',
-            'limite': 'limit', 'limite ingrediente': 'ingredientLimit',
-            'é obrigatório?(sim/não)': 'isRequired', 'disponível': 'available',
-            'dados': 'data', 'valor': 'value',
-            // Mapeamentos para Adicionais_pizza
-            'adicionais': 'name',
-            'limite adicionais': 'ingredientLimit',
-            'limite categoria': 'limit'
-        };
         const cleanHeader = header.trim().toLowerCase();
         return headerMapping[cleanHeader] || cleanHeader.replace(/\s/g, '').replace(/[^a-z0-9]/g, '');
     });
@@ -98,12 +102,9 @@ function parseCsvData(csvText) {
                 let value = values[j];
                 if (['basePrice', 'price6Slices', 'price4Slices', 'price10Slices', 'promoPrice', 'deliveryFee', 'price'].includes(headerKey)) {
                     item[headerKey] = parseFloat(String(value).replace(',', '.')) || 0;
-                } else if (headerKey === 'limit') {
+                } else if (['limit', 'categoryLimit', 'ingredientLimit'].includes(headerKey)) {
                     const parsedValue = parseInt(value, 10);
                     item[headerKey] = isNaN(parsedValue) ? Infinity : parsedValue;
-                } else if (headerKey === 'ingredientLimit') {
-                    const parsedValue = parseInt(value, 10);
-                    item[headerKey] = isNaN(parsedValue) ? 1 : parsedValue;
                 } else if (['isPizza', 'available', 'active', 'isCustomizable', 'isSingleChoice', 'isRequired'].includes(headerKey)) {
                     item[headerKey] = value.toUpperCase() === 'SIM';
                 } else {
@@ -121,17 +122,9 @@ export default async (req, res) => {
 
     try {
         const fetchData = async (url) => {
-            try {
-                const response = await fetch(url);
-                if (!response.ok) {
-                    console.warn(`Aviso: Falha ao buscar dados de ${url}. A API continuará sem eles.`);
-                    return ''; // Retorna string vazia em caso de falha para não quebrar o Promise.all
-                }
-                return response.text();
-            } catch (error) {
-                console.warn(`Aviso: Erro de rede ao buscar ${url}: ${error.message}. A API continuará sem eles.`);
-                return ''; // Retorna string vazia em caso de erro de rede
-            }
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Falha ao buscar dados de ${url}`);
+            return response.text();
         };
 
         const [
@@ -139,61 +132,47 @@ export default async (req, res) => {
             promocoesCsv,
             deliveryFeesCsv,
             ingredientesHamburguerCsv,
-            contactCsv,
-            ingredientesPizzaCsv // NOVO
+            ingredientesPizzaCsv,
+            contactCsv
         ] = await Promise.all([
             fetchData(CARDAPIO_CSV_URL),
             fetchData(PROMOCOES_CSV_URL),
             fetchData(DELIVERY_FEES_CSV_URL),
             fetchData(INGREDIENTES_HAMBURGUER_CSV_URL),
-            fetchData(CONTACT_CSV_URL),
-            fetchData(INGREDIENTES_PIZZA_CSV_URL) // NOVO
+            fetchData(INGREDIENTES_PIZZA_CSV_URL),
+            fetchData(CONTACT_CSV_URL)
         ]);
 
-        let cardapioJson = parseCsvData(cardapioCsv);
-        let ingredientesPizzaJson = parseCsvData(ingredientesPizzaCsv); // NOVO
+        let cardapioJson = parseCsvData(cardapioCsv, 'cardapio');
 
-        // Busca as configurações de disponibilidade do Firestore
         const itemStatusRef = doc(db, "config", "item_status");
-        const itemVisibilityRef = doc(db, "config", "item_visibility");
-        const pizzaHalfStatusRef = doc(db, "config", "pizza_half_status");
-
-        const [itemStatusSnap, itemVisibilitySnap, pizzaHalfStatusSnap] = await Promise.all([
-            getDoc(itemStatusRef),
-            getDoc(itemVisibilityRef),
-            getDoc(pizzaHalfStatusRef)
+        const itemExtrasRef = doc(db, "config", "item_extras_status");
+        
+        const [itemStatusSnap, itemExtrasSnap] = await Promise.all([
+             getDoc(itemStatusRef),
+             getDoc(itemExtrasRef)
         ]);
-
+        
         const unavailableItems = itemStatusSnap.exists() ? itemStatusSnap.data() : {};
-        const hiddenItems = itemVisibilitySnap.exists() ? itemVisibilitySnap.data() : {};
-        const halfPizzaStatus = pizzaHalfStatusSnap.exists() ? pizzaHalfStatusSnap.data() : {};
+        const itemExtrasStatus = itemExtrasSnap.exists() ? itemExtrasSnap.data() : {};
 
-        // Aplica as configurações do Firestore: primeiro filtra, depois mapeia
-        cardapioJson = cardapioJson
-            .filter(item => hiddenItems[item.id] !== false) // 1. Filtra os itens que não estão explicitamente ocultos
-            .map(item => {
-                const isUnavailable = unavailableItems[item.id] === false;
-                
-                const updatedItem = {
-                    ...item,
-                    available: !isUnavailable // 2. Define a disponibilidade
-                };
+        cardapioJson = cardapioJson.map(item => {
+            const acceptsExtrasDefault = item.isPizza; // Padrão
+            const acceptsExtras = itemExtrasStatus[item.id] === undefined ? acceptsExtrasDefault : itemExtrasStatus[item.id];
 
-                // 3. Define a permissão de meia a meia para pizzas
-                if (item.isPizza) {
-                    updatedItem.allowHalf = halfPizzaStatus[item.id] !== false; // Padrão é true (permite)
-                }
-
-                return updatedItem;
-            });
+            if (unavailableItems[item.id] === false) {
+                return { ...item, available: false, acceptsExtras };
+            }
+            return { ...item, acceptsExtras };
+        });
 
         res.status(200).json({
             cardapio: cardapioJson,
-            promocoes: parseCsvData(promocoesCsv),
-            deliveryFees: parseCsvData(deliveryFeesCsv),
-            ingredientesHamburguer: parseCsvData(ingredientesHamburguerCsv),
-            contact: parseCsvData(contactCsv),
-            ingredientesPizza: ingredientesPizzaJson // NOVO
+            promocoes: parseCsvData(promocoesCsv, 'promocoes'),
+            deliveryFees: parseCsvData(deliveryFeesCsv, 'delivery'),
+            ingredientesHamburguer: parseCsvData(ingredientesHamburguerCsv, 'burger_ingredients'),
+            ingredientesPizza: parseCsvData(ingredientesPizzaCsv, 'pizza_ingredients'),
+            contact: parseCsvData(contactCsv, 'contact')
         });
 
     } catch (error) {
