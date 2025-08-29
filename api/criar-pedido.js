@@ -24,7 +24,7 @@ export default async (req, res) => {
     }
 
     try {
-        const { order, selectedAddress, total, paymentMethod, whatsappNumber } = req.body;
+        const { order, selectedAddress, total, paymentMethod, whatsappNumber, observation } = req.body;
 
         if (!order || !selectedAddress || !total) {
             return res.status(400).json({ error: 'Dados do pedido incompletos.' });
@@ -50,7 +50,8 @@ export default async (req, res) => {
                 total: total,
                 pagamento: paymentMethod,
                 status: 'Novo',
-                criadoEm: serverTimestamp()
+                criadoEm: serverTimestamp(),
+                observacao: observation || ''
             });
             pdvSaved = true;
         } catch (firestoreError) {
@@ -60,30 +61,30 @@ export default async (req, res) => {
         }
 
 
-// Monta a mensagem para o WhatsApp agrupando por categoria
-const itemsByCategory = order.reduce((acc, item) => {
-    const category = item.category || 'Outros';
-    if (!acc[category]) {
-        acc[category] = [];
-    }
-    acc[category].push(item);
-    return acc;
-}, {});
+        // Monta a mensagem para o WhatsApp agrupando por categoria
+        const itemsByCategory = order.reduce((acc, item) => {
+            const category = item.category || 'Outros';
+            if (!acc[category]) {
+                acc[category] = [];
+            }
+            acc[category].push(item);
+            return acc;
+        }, {});
 
-let itemsText = '';
-for (const category in itemsByCategory) {
-    itemsText += `\n*-- ${category.toUpperCase()} --*\n`;
-    itemsText += itemsByCategory[category].map(item => {
-        let itemDescription = `- *${item.name}* - R$ ${item.price.toFixed(2).replace('.', ',')}\n`;
-        if (item.type === 'custom_burger' && item.ingredients) {
-            itemDescription += item.ingredients.map(ing => {
-                const formattedName = ing.name.replace(/\(x\d+\)/g, match => `*${match}*`);
-                return `        - ${formattedName}\n`;
+        let itemsText = '';
+        for (const category in itemsByCategory) {
+            itemsText += `\n*-- ${category.toUpperCase()} --*\n`;
+            itemsText += itemsByCategory[category].map(item => {
+                let itemDescription = `- *${item.name}* - R$ ${item.price.toFixed(2).replace('.', ',')}\n`;
+                if (item.type === 'custom_burger' && item.ingredients) {
+                    itemDescription += item.ingredients.map(ing => {
+                        const formattedName = ing.name.replace(/\(x\d+\)/g, match => `*${match}*`);
+                        return `        - ${formattedName}\n`;
+                    }).join('');
+                }
+                return itemDescription;
             }).join('');
         }
-        return itemDescription;
-    }).join('');
-}
 
         let paymentText = '';
         if (typeof paymentMethod === 'object' && paymentMethod.method === 'Dinheiro') {
@@ -92,11 +93,17 @@ for (const category in itemsByCategory) {
             paymentText = `Pagamento: *${paymentMethod}*`;
         }
 		
-// NOVO: Cria a linha de desconto apenas se houver um desconto
+        // NOVO: Cria a linha de desconto apenas se houver um desconto
         let discountText = '';
         if (total.discount && total.discount > 0) {
             discountText = `Desconto: - R$ ${total.discount.toFixed(2).replace('.', ',')}\n`;
         }
+        
+        let observationText = '';
+        if (observation && observation.trim() !== '') {
+            observationText = `\n*OBSERVAÇÕES:*\n${observation.trim()}\n`;
+        }
+
         const fullMessage = `
 *-- NOVO PEDIDO --*
 
@@ -113,6 +120,7 @@ ${discountText}Taxa de Entrega: R$ ${total.deliveryFee.toFixed(2).replace('.', '
 *Total: R$ ${total.finalTotal.toFixed(2).replace('.', ',')}*
 
 ${paymentText}
+${observationText}
         `;
         
         const targetNumber = `55${whatsappNumber.replace(/\D/g, '')}`;
@@ -125,3 +133,4 @@ ${paymentText}
         res.status(500).json({ error: 'Erro interno no servidor.' });
     }
 };
+
