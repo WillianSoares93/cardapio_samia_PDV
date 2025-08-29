@@ -159,7 +159,7 @@ export default async (req, res) => {
              getDoc(itemStatusRef),
              getDoc(itemVisibilityRef),
              getDoc(itemExtrasRef),
-             getDoc(pizzaHalfStatusSnap)
+             getDoc(pizzaHalfStatusRef)
         ]);
         
         const unavailableItems = itemStatusSnap.exists() ? itemStatusSnap.data() : {};
