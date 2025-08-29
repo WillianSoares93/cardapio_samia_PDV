@@ -386,21 +386,16 @@
         let editingItemIndex = null;
         let currentItemForQuantity = null;
         let currentBurgerForBuilder = { burger: null, editIndex: null, existingItem: null };
-
-        // --- INÍCIO DA ALTERAÇÃO ---
-        // Nova função para formatar a categoria da pizza
+        
         function formatPizzaCategory(category) {
             if (!category) return 'PIZZAS';
             const upperCategory = category.toUpperCase();
-            // Verifica se a categoria já está no formato desejado
             if (upperCategory.startsWith('PIZZA')) {
                 return category;
             }
-            // Adiciona o prefixo
             return `PIZZA(s) ${upperCategory}`;
         }
-        // --- FIM DA ALTERAÇÃO ---
-
+        
         function showView(viewName) {
             initialSelectionView.classList.add('hidden');
             orderFormView.classList.add('hidden');
@@ -560,6 +555,7 @@
                 const clientNameInput = document.getElementById('manual-clientName');
                 clientNameInput.value = orderData.endereco.clientName;
                 clientNameInput.readOnly = false;
+                document.getElementById('manual-observation').value = orderData.observacao || '';
                 
                 updateManualOrderDisplay();
                 showView('order-form-view');
@@ -900,14 +896,12 @@
                 const finalPrice = manualFirstHalfPizza.price + secondHalfObject.price;
                 const combinedName = `${manualFirstHalfPizza.selected_slices} FATIAS: Meia ${manualFirstHalfPizza.name} & Meia ${secondHalfObject.name}`;
                 
-                // --- INÍCIO DA ALTERAÇÃO ---
                 const newItem = { 
                     type: 'split', name: combinedName, price: finalPrice, firstHalfData: manualFirstHalfPizza,
                     secondHalfData: secondHalfObject, 
                     category: 'PIZZA(s) MEIA A MEIA', // Categoria fixa para meia a meia
                     selected_slices: manualFirstHalfPizza.selected_slices
                 };
-                // --- FIM DA ALTERAÇÃO ---
 
                 if (editingItemIndex !== null) {
                     manualOrderItems[editingItemIndex] = newItem;
@@ -963,14 +957,12 @@
                     optionDiv.innerHTML = `<div><span class="font-bold">${size.label}</span><span class="text-gray-600 ml-2">R$ ${pizza[size.priceKey].toFixed(2).replace('.',',')}</span></div><div class="flex gap-2"><button type="button" class="add-full-pizza-manual px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">Inteira</button><button type="button" class="add-half-pizza-manual px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600">Meia</button></div>`;
                     
                     optionDiv.querySelector('.add-full-pizza-manual').addEventListener('click', () => {
-                        // --- INÍCIO DA ALTERAÇÃO ---
                         const newItem = { 
                             type: 'full', name: `${size.label.toUpperCase()}: ${pizza.name}`, price: pizza[size.priceKey],
                             description: pizza.description, 
                             category: formatPizzaCategory(pizza.category), // Formata a categoria
                             selected_slices: size.slices, originalItem: pizza
                         };
-                        // --- FIM DA ALTERAÇÃO ---
 
                         if (editingItemIndex !== null) {
                             manualOrderItems[editingItemIndex] = newItem;
