@@ -605,6 +605,11 @@
                     <span>Total:</span>
                     <span id="total">R$ 0,00</span>
                 </div>
+
+                <div class="mt-4">
+                    <label for="order-observation" class="block text-sm font-medium text-gray-700">Observações:</label>
+                    <textarea id="order-observation" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm" placeholder="Ex: Tirar a cebola, ponto da carne, etc."></textarea>
+                </div>
             </div>
 
             <div id="address-summary-section" class="border border-gray-200 rounded-lg p-4 mb-6 bg-gray-50 hidden">
@@ -2109,6 +2114,8 @@
                     finalTotal: subtotal - finalDiscountAmount + (selectedAddress.deliveryFee || 0)
                 };
 
+                const observation = document.getElementById('order-observation').value.trim();
+
                 fetch('/api/criar-pedido', {
                     method: 'POST',
                     headers: {
@@ -2119,7 +2126,8 @@
                         selectedAddress: selectedAddress,
                         total: totalData,
                         paymentMethod: selectedPaymentMethod,
-                        whatsappNumber: contactInfo.whatsapp
+                        whatsappNumber: contactInfo.whatsapp,
+                        observation: observation
                     }),
                 })
                 .then(response => response.json())
