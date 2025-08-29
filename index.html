@@ -842,8 +842,8 @@
     <!-- NOVO: Modal para perguntar sobre adicionais -->
     <div id="ask-pizza-extras-modal" class="message-modal">
         <div class="modal-content">
-            <p class="text-lg font-semibold text-gray-800 mb-4">Deseja adicionar mais ingredientes?</p>
-            <p class="text-gray-600 mb-6">Turbine sua pizza com bordas recheadas e outros adicionais!</p>
+            <p class="text-lg font-semibold text-gray-800 mb-4" id="ask-extras-title"></p>
+            <p class="text-gray-600 mb-6"></p>
             <div class="flex justify-center gap-4">
                 <button id="ask-extras-no-btn" class="px-6 py-2 bg-gray-300 text-gray-800 rounded-lg font-bold hover:bg-gray-400 transition">Não, obrigado</button>
                 <button id="ask-extras-yes-btn" class="px-6 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition">Sim, quero!</button>
@@ -855,7 +855,7 @@
     <div id="pizza-extras-builder-modal" class="modal">
         <div class="modal-content builder-modal">
             <span class="close-button" id="close-pizza-extras-builder-modal">&times;</span>
-            <h3 class="text-xl font-bold text-gray-800 mb-4">Adicionais para sua Pizza</h3>
+            <h3 class="text-xl font-bold text-gray-800 mb-4" id="pizza-extras-builder-title"></h3>
             <div id="pizza-extras-scope-buttons" class="flex flex-wrap gap-2 mb-4 border-b pb-4">
                 <!-- Botões de escopo serão inseridos aqui -->
             </div>
@@ -925,7 +925,7 @@
             let allPromotionsData = [];
             let deliveryFeesData = [];
             let allBurgerIngredients = {};
-            let allPizzaIngredients = {}; // NOVO
+            let allPizzaIngredients = {}; 
             let isSelectingHalfPizza = false; 
             let isFirstHalfPromotional = false; 
             let deferredPrompt; 
@@ -940,8 +940,8 @@
             let ingredientVisibility = {};
             let ingredientStatus = {};
             let pizzaHalfStatus = {};
-            let itemExtrasStatus = {}; // NOVO
-            let currentPizzaExtrasState = {}; // NOVO: Para gerenciar o estado dos adicionais no modal
+            let itemExtrasStatus = {}; 
+            let currentPizzaExtrasState = {}; 
             
             let selectedAddress = {
                 clientName: null, 
@@ -1035,11 +1035,12 @@
             const pickupCheckbox = document.getElementById('pickupCheckbox');
             const addressFieldsContainer = document.getElementById('address-fields-container');
 
-            // NOVO: Elementos para os adicionais da pizza
             const askPizzaExtrasModal = document.getElementById('ask-pizza-extras-modal');
+            const askExtrasTitle = document.getElementById('ask-extras-title');
             const askExtrasYesBtn = document.getElementById('ask-extras-yes-btn');
             const askExtrasNoBtn = document.getElementById('ask-extras-no-btn');
             const pizzaExtrasBuilderModal = document.getElementById('pizza-extras-builder-modal');
+            const pizzaExtrasBuilderTitle = document.getElementById('pizza-extras-builder-title');
             const closePizzaExtrasBuilderModalBtn = document.getElementById('close-pizza-extras-builder-modal');
             const pizzaExtrasIngredientsContainer = document.getElementById('pizza-extras-ingredients-container');
             const pizzaExtrasTotalPrice = document.getElementById('pizza-extras-total-price');
@@ -1051,7 +1052,6 @@
             let isSelectingSecondHalf = false; 
             let qrCodeInstance = null;
 
-            // Variáveis para controle do observador de rolagem
             let isScrollingFromClick = false;
             let categoryObserver;
             let firstPizzaSectionId = null;
@@ -1063,6 +1063,15 @@
                 { slices: 10, label: '10 Fatias', priceKey: 'price10Slices' }
             ];
             
+            function formatProductName(name, category) {
+                const lowerCaseName = name.toLowerCase();
+                const lowerCaseCategory = category.toLowerCase().replace(/s$/, ''); // Remove 's' do final (ex: pizzas -> pizza)
+                if (!lowerCaseName.includes(lowerCaseCategory)) {
+                    return `${capitalizeFirstLetter(lowerCaseCategory)} ${name}`;
+                }
+                return name;
+            }
+
             function formatPizzaCategory(category) {
                 if (!category) return 'PIZZAS';
                 const upperCategory = category.toUpperCase();
@@ -1197,7 +1206,7 @@
                         }
                     }
                 });
-                onSnapshot(doc(db, "config", "item_extras_status"), (doc) => { // NOVO
+                 onSnapshot(doc(db, "config", "item_extras_status"), (doc) => {
                     itemExtrasStatus = doc.exists() ? doc.data() : {};
                     allMenuData.forEach(item => {
                         const defaultExtras = item.isPizza;
@@ -1352,7 +1361,6 @@
                         return acc;
                     }, {});
 
-                    // NOVO: Carrega os ingredientes da pizza
                     const rawPizzaIngredients = data.ingredientesPizza || [];
                      allPizzaIngredients = rawPizzaIngredients.reduce((acc, current) => {
                         const category = current.category || 'Adicionais';
@@ -1868,7 +1876,8 @@
                 showTemporaryFeedback('✔️ Adicionado ao pedido!', 'bg-green-500');
 
                 if (item.acceptsExtras && (item.type === 'full' || item.type === 'split')) {
-                    showAskForExtrasModal(uniqueId);
+                    const originalItem = allMenuData.find(menuItem => menuItem.name === item.name.split(': ')[1]) || allMenuData.find(menuItem => item.name.includes(menuItem.name));
+                    showAskForExtrasModal(uniqueId, originalItem || item);
                 }
             }
 
@@ -2699,7 +2708,9 @@
                 return gerarPayload(pixKey, amount, merchantName, merchantCity, txid);
             }
             
-            function showAskForExtrasModal(orderItemId) {
+            function showAskForExtrasModal(orderItemId, item) {
+                const formattedName = formatProductName(item.name, item.category);
+                askExtrasTitle.textContent = `Turbine a(o) ${formattedName} adicionando mais ingredientes!`;
                 askPizzaExtrasModal.dataset.orderItemId = orderItemId;
                 askPizzaExtrasModal.style.display = 'flex';
             }
@@ -2708,11 +2719,13 @@
                 const pizzaItem = order[orderIndex];
                 if (!pizzaItem || (pizzaItem.type !== 'full' && pizzaItem.type !== 'split')) return;
 
+                const formattedName = formatProductName(pizzaItem.name, pizzaItem.category);
+                pizzaExtrasBuilderTitle.textContent = `Adicionais para ${formattedName}`;
                 pizzaExtrasBuilderModal.dataset.orderIndex = orderIndex;
+
                 const scopeButtonsContainer = document.getElementById('pizza-extras-scope-buttons');
                 scopeButtonsContainer.innerHTML = '';
 
-                // Initialize state for the modal
                 currentPizzaExtrasState = { metade1: [], metade2: [], toda: [] };
                 if (pizzaItem.extras && pizzaItem.extras.length > 0) {
                     pizzaItem.extras.forEach(extra => {
@@ -2732,10 +2745,6 @@
                         <button class="scope-button px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm" data-scope="metade2">2ª Metade: ${half2Name}</button>
                         <button class="scope-button px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm active" data-scope="toda">Pizza Toda</button>
                     `;
-                } else {
-                     scopeButtonsContainer.innerHTML = `
-                        <button class="scope-button px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm active" data-scope="toda">Pizza Toda</button>
-                    `;
                 }
                 
                 scopeButtonsContainer.querySelectorAll('.scope-button').forEach(btn => {
@@ -2752,7 +2761,7 @@
             }
 
             function renderPizzaExtrasList(orderIndex) {
-                const activeScope = document.querySelector('#pizza-extras-scope-buttons .active').dataset.scope;
+                const activeScope = document.querySelector('#pizza-extras-scope-buttons .active')?.dataset.scope || 'toda';
                 pizzaExtrasIngredientsContainer.innerHTML = '';
 
                 for (const categoryName in allPizzaIngredients) {
@@ -3228,7 +3237,6 @@
                 showAddressInputModal(false);
             });
             
-            // NOVO: Listeners para o modal de adicionais da pizza
             askExtrasYesBtn.addEventListener('click', () => {
                 const orderItemId = askPizzaExtrasModal.dataset.orderItemId;
                 const orderIndex = order.findIndex(item => item.id == orderItemId);
