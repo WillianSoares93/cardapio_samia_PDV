@@ -161,7 +161,7 @@
         let itemStatus = {};
         let itemVisibility = {};
         let itemExtrasStatus = {}; 
-        let pizzaHalfStatus = {}; // RE-ADICIONADO
+        let pizzaHalfStatus = {};
         let ingredientStatus = {};
         let ingredientVisibility = {};
 
@@ -238,7 +238,7 @@
                 updateAllRows();
                 filterLists();
             });
-            onSnapshot(doc(db, "config", "pizza_half_status"), (doc) => { // RE-ADICIONADO
+            onSnapshot(doc(db, "config", "pizza_half_status"), (doc) => {
                 pizzaHalfStatus = doc.exists() ? doc.data() : {};
                 updateAllRows();
                 filterLists();
@@ -381,6 +381,8 @@
                 const acceptsExtras = itemExtrasStatus[item.id] === undefined ? defaultExtras : itemExtrasStatus[item.id];
                 const allowsHalf = item.isPizza ? (pizzaHalfStatus[item.id] === undefined ? true : pizzaHalfStatus[item.id]) : false;
                 
+                const halfToggleContainerClass = item.isPizza ? 'w-1/4' : 'w-1/4 invisible';
+
                 togglesHtml = `
                     <div class="flex items-center justify-around w-4/6">
                         <label class="flex items-center justify-center cursor-pointer w-1/4 ${!isVisible ? 'opacity-50' : ''}">
@@ -401,12 +403,14 @@
                                 <div class="toggle-bg w-11 h-6 bg-gray-200 rounded-full peer"></div>
                             </div>
                         </label>
-                         <label class="flex items-center justify-center cursor-pointer w-1/4 ${!isVisible || !item.isPizza ? 'opacity-50' : ''}">
-                            <div class="relative">
-                                <input type="checkbox" class="sr-only peer half-toggle" data-type="half" ${allowsHalf ? 'checked' : ''} ${!isVisible || !item.isPizza ? 'disabled' : ''}>
-                                <div class="toggle-bg w-11 h-6 bg-gray-200 rounded-full peer"></div>
-                            </div>
-                        </label>
+                         <div class="${halfToggleContainerClass}">
+                             <label class="flex items-center justify-center cursor-pointer ${!isVisible ? 'opacity-50' : ''}">
+                                <div class="relative">
+                                    <input type="checkbox" class="sr-only peer half-toggle" data-type="half" ${allowsHalf ? 'checked' : ''} ${!isVisible ? 'disabled' : ''}>
+                                    <div class="toggle-bg w-11 h-6 bg-gray-200 rounded-full peer"></div>
+                                </div>
+                            </label>
+                        </div>
                     </div>`;
             } else { // Ingredientes
                  togglesHtml = `
