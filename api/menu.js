@@ -177,7 +177,7 @@ export default async (req, res) => {
 
                 const allowsHalf = item.isPizza ? (pizzaHalfStatus[item.id] === undefined ? true : pizzaHalfStatus[item.id]) : false;
 
-                return { ...item, available: isAvailable, acceptsExtras, allowHalf };
+                return { ...item, available: isAvailable, acceptsExtras, allowHalf: allowsHalf };
             });
 
         res.status(200).json({
