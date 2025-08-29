@@ -2667,6 +2667,99 @@
                 const txid = "pedido" + Date.now();
                 return gerarPayload(pixKey, amount, merchantName, merchantCity, txid);
             }
+
+            function showAskForExtrasModal(orderItemId) {
+                askPizzaExtrasModal.dataset.orderItemId = orderItemId;
+                askPizzaExtrasModal.style.display = 'flex';
+            }
+            
+            function openPizzaExtrasBuilderModal(orderIndex) {
+                const pizzaItem = order[orderIndex];
+                if (!pizzaItem || (pizzaItem.type !== 'full' && pizzaItem.type !== 'split')) return;
+
+                pizzaExtrasBuilderModal.dataset.orderIndex = orderIndex;
+                pizzaExtrasIngredientsContainer.innerHTML = '';
+
+                let basePrice = pizzaItem.price;
+                if (pizzaItem.extras && pizzaItem.extras.length > 0) {
+                    pizzaItem.extras.forEach(extra => {
+                        basePrice -= extra.price;
+                    });
+                }
+                
+                for (const categoryName in allPizzaIngredients) {
+                    const ingredients = allPizzaIngredients[categoryName];
+                    const categoryDiv = document.createElement('div');
+                    categoryDiv.className = 'ingredient-category';
+                    categoryDiv.innerHTML = `<h4>${capitalizeFirstLetter(categoryName)}</h4>`;
+
+                    ingredients.forEach(ingredient => {
+                        const priceDisplay = ingredient.price > 0 ? `+ R$ ${ingredient.price.toFixed(2).replace('.', ',')}` : '';
+                        const optionDiv = document.createElement('div');
+                        optionDiv.className = 'ingredient-option';
+
+                        if (pizzaItem.type === 'split') {
+                            optionDiv.innerHTML = `
+                                <span>${ingredient.name}</span>
+                                <div class="flex items-center space-x-2">
+                                    <span class="price mr-2">${priceDisplay}</span>
+                                    <label class="flex items-center text-xs"><input type="checkbox" name="${ingredient.id}" value="metade1" class="form-checkbox mr-1">1ª</label>
+                                    <label class="flex items-center text-xs"><input type="checkbox" name="${ingredient.id}" value="metade2" class="form-checkbox mr-1">2ª</label>
+                                    <label class="flex items-center text-xs"><input type="checkbox" name="${ingredient.id}" value="toda" class="form-checkbox mr-1">Toda</label>
+                                </div>
+                            `;
+                        } else { // Pizza inteira
+                            optionDiv.innerHTML = `
+                                <label class="flex items-center w-full">
+                                    <input type="checkbox" name="${ingredient.id}" value="toda" class="form-checkbox">
+                                    <span class="ml-2 flex-grow">${ingredient.name}</span>
+                                    <span class="price">${priceDisplay}</span>
+                                </label>
+                            `;
+                        }
+                        categoryDiv.appendChild(optionDiv);
+                    });
+                    pizzaExtrasIngredientsContainer.appendChild(categoryDiv);
+                }
+
+                pizzaExtrasTotalPrice.textContent = `R$ ${pizzaItem.price.toFixed(2).replace('.', ',')}`;
+                pizzaExtrasBuilderModal.style.display = 'flex';
+            }
+
+            function confirmPizzaExtras() {
+                const orderIndex = parseInt(pizzaExtrasBuilderModal.dataset.orderIndex, 10);
+                const pizzaItem = order[orderIndex];
+                
+                let basePrice = pizzaItem.price;
+                if (pizzaItem.extras && pizzaItem.extras.length > 0) {
+                    pizzaItem.extras.forEach(extra => {
+                        basePrice -= extra.price;
+                    });
+                }
+
+                pizzaItem.extras = [];
+                let extrasPrice = 0;
+
+                pizzaExtrasBuilderModal.querySelectorAll('input[type="checkbox"]:checked').forEach(input => {
+                    const ingredientName = input.closest('.ingredient-option').querySelector('span').textContent;
+                    const ingredientCategory = input.closest('.ingredient-category').querySelector('h4').textContent;
+                    const ingredientData = allPizzaIngredients[ingredientCategory].find(i => i.name === ingredientName);
+                    
+                    if (ingredientData) {
+                        pizzaItem.extras.push({
+                            name: ingredientData.name,
+                            price: ingredientData.price,
+                            placement: input.value === 'toda' ? 'Pizza Toda' : (input.value === 'metade1' ? '1ª Metade' : '2ª Metade')
+                        });
+                        extrasPrice += ingredientData.price;
+                    }
+                });
+
+                pizzaItem.price = basePrice + extrasPrice;
+                updateOrderDisplay();
+                pizzaExtrasBuilderModal.style.display = 'none';
+            }
+
             
             loadMenuAndRender();
 
