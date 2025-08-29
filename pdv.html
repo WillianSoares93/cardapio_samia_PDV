@@ -775,6 +775,16 @@
                 buttonHtml = `<button data-id="${id}" data-status="Finalizado" class="move-btn w-full mt-4 bg-gray-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors">Finalizar Pedido</button>`;
             }
 
+            let observationHtml = '';
+            if (order.observacao && order.observacao.trim() !== '') {
+                observationHtml = `
+                    <div class="mt-2 pt-2 border-t border-dashed border-gray-300">
+                        <p class="text-sm font-bold text-blue-700"><i class="fas fa-comment-dots mr-2"></i>Observação:</p>
+                        <p class="text-sm text-gray-800 whitespace-pre-wrap">${order.observacao}</p>
+                    </div>
+                `;
+            }
+
             let paymentHtml = '';
             if (order.pagamento) {
                 let paymentText = '';
@@ -846,6 +856,7 @@
                             </div>
                             <ul class="border-t border-b border-gray-200 py-2 my-2 space-y-1">${itemsHtml}</ul>
                             ${totalDetailsHtml}
+                            ${observationHtml}
                             ${paymentHtml}
                             ${buttonHtml}
                         </div>
@@ -1013,6 +1024,15 @@
                         contactPrintHtml = `<p><strong>Contato:</strong> ${order.endereco.telefone}</p>`;
                     }
 
+                    let observationPrintHtml = '';
+                    if (order.observacao && order.observacao.trim() !== '') {
+                        observationPrintHtml = `
+                        <hr style="border-top: 2px dashed black; margin: 15px 0;">
+                        <h3 style="font-size: 22px; margin-top: 20px;">OBSERVAÇÕES</h3>
+                        <p style="font-size: 20px;">${order.observacao}</p>
+                        `;
+                    }
+
                     if (type === 'kitchen') {
                         // --- INÍCIO DA ALTERAÇÃO ---
                         let kitchenHtml = '';
@@ -1038,6 +1058,7 @@
                                 ${contactPrintHtml.replace(/<strong>/g, '<strong style="font-size: 18px;">').replace(/<p>/g, '<p style="font-size: 18px;">')}
                                 <hr style="border-top: 2px dashed black; margin: 15px 0;">
                                 ${kitchenHtml}
+                                ${observationPrintHtml}
                             </div>
                         `;
                     } else { // client receipt
@@ -1090,6 +1111,7 @@
                                     <p>Taxa de Entrega: R$ ${order.total.deliveryFee.toFixed(2).replace('.', ',')}</p>
                                     <p style="font-weight: bold; font-size: 18px;">Total: R$ ${order.total.finalTotal.toFixed(2).replace('.', ',')}</p>
                                 </div>
+                                ${observationPrintHtml.replace(/<h3[^>]*>OBSERVAÇÕES<\/h3>/, '<p style="font-weight: bold;">Observações:</p>').replace(/<p[^>]*>/g, '<p>')}
                                 ${paymentDetailsHtml}
                             </div>
                         `;
@@ -1664,3 +1686,4 @@
     </script>
 </body>
 </html>
+
