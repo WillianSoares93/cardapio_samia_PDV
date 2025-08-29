@@ -940,6 +940,7 @@
             let ingredientVisibility = {};
             let ingredientStatus = {};
             let pizzaHalfStatus = {};
+            let itemExtrasStatus = {}; // NOVO
             let currentPizzaExtrasState = {}; // NOVO: Para gerenciar o estado dos adicionais no modal
             
             let selectedAddress = {
@@ -1195,6 +1196,13 @@
                             renderPizzaOptions(updatedPizza);
                         }
                     }
+                });
+                onSnapshot(doc(db, "config", "item_extras_status"), (doc) => { // NOVO
+                    itemExtrasStatus = doc.exists() ? doc.data() : {};
+                    allMenuData.forEach(item => {
+                        const defaultExtras = item.isPizza;
+                        item.acceptsExtras = itemExtrasStatus[item.id] === undefined ? defaultExtras : itemExtrasStatus[item.id];
+                    });
                 });
                 onSnapshot(doc(db, "config", "ingredient_status"), (doc) => {
                     ingredientStatus = doc.exists() ? doc.data() : {};
@@ -1708,7 +1716,8 @@
                             description: currentPizzaData.description,
                             category: formatPizzaCategory(currentPizzaData.category),
                             selected_slices: selectedSlices,
-                            extras: []
+                            extras: [],
+                            acceptsExtras: currentPizzaData.acceptsExtras
                         }, this, currentPizzaData.imageUrl); 
                         pizzaOptionModal.style.display = 'none';
                         updatePromotionButtonVisibility(); 
@@ -1816,7 +1825,8 @@
                         type: 'split', name: combinedName, price: combinedPrice,
                         description: combinedDescription, category: 'PIZZA(s) MEIA A MEIA',
                         selected_slices: firstHalfPizza.selected_slices,
-                        extras: []
+                        extras: [],
+                        acceptsExtras: item.acceptsExtras // Herda a permissão
                     }, clickedButton, itemImageUrl); 
 
                     firstHalfPizza = null;
@@ -1837,7 +1847,8 @@
                         price: item.basePrice, 
                         description: item.description,
                         category: item.category,
-                        extras: []
+                        extras: [],
+                        acceptsExtras: item.acceptsExtras
                     }, clickedButton, itemImageUrl); 
                 }
             }
@@ -1856,7 +1867,7 @@
                 
                 showTemporaryFeedback('✔️ Adicionado ao pedido!', 'bg-green-500');
 
-                if (item.type === 'full' || item.type === 'split') {
+                if (item.acceptsExtras && (item.type === 'full' || item.type === 'split')) {
                     showAskForExtrasModal(uniqueId);
                 }
             }
@@ -1962,7 +1973,7 @@
                         }
                         
                         let extrasButtonHtml = '';
-                        if (item.type === 'full' || item.type === 'split') {
+                        if (item.acceptsExtras && (item.type === 'full' || item.type === 'split')) {
                             const buttonText = (item.extras && item.extras.length > 0) ? 'Editar Adicionais' : 'Incluir Adicionais';
                             extrasButtonHtml = `<button class="edit-extras-btn text-xs text-blue-600 hover:underline" data-order-index="${index}">${buttonText}</button>`;
                         }
@@ -3306,3 +3317,4 @@
     </script>
 </body>
 </html>
+
