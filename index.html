@@ -439,7 +439,7 @@
             padding: 10px;
             object-fit: cover;
         }
-        .burger-builder-modal {
+        .builder-modal {
             max-width: 600px;
         }
         .ingredient-category {
@@ -484,24 +484,24 @@
             border-color: #dc2626;
             box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2);
         }
-        .burger-summary {
+        .builder-summary {
             background-color: #fff;
             padding: 16px;
             border-radius: 8px;
             margin-top: 16px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
-        .burger-summary h5 {
+        .builder-summary h5 {
             font-weight: bold;
             color: #1f2937;
             margin-bottom: 8px;
         }
-        .burger-summary ul {
+        .builder-summary ul {
             list-style: none;
             padding: 0;
             margin: 0;
         }
-        .burger-summary li {
+        .builder-summary li {
             font-size: 0.875rem;
             color: #4b5563;
         }
@@ -633,7 +633,7 @@
     </div>
     
     <div id="burger-builder-modal" class="modal">
-        <div class="modal-content burger-builder-modal">
+        <div class="modal-content builder-modal">
             <span class="close-button" id="close-burger-builder-modal">&times;</span>
             <h3 class="text-xl font-bold text-gray-800 mb-4">Monte Seu Hambúrguer</h3>
             
@@ -825,6 +825,34 @@
             </button>
         </div>
     </div>
+    
+    <!-- NOVO: Modal para perguntar sobre adicionais -->
+    <div id="ask-pizza-extras-modal" class="message-modal">
+        <div class="modal-content">
+            <p class="text-lg font-semibold text-gray-800 mb-4">Deseja adicionar mais ingredientes?</p>
+            <p class="text-gray-600 mb-6">Turbine sua pizza com bordas recheadas e outros adicionais!</p>
+            <div class="flex justify-center gap-4">
+                <button id="ask-extras-no-btn" class="px-6 py-2 bg-gray-300 text-gray-800 rounded-lg font-bold hover:bg-gray-400 transition">Não, obrigado</button>
+                <button id="ask-extras-yes-btn" class="px-6 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition">Sim, quero!</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- NOVO: Modal para construir adicionais da pizza -->
+    <div id="pizza-extras-builder-modal" class="modal">
+        <div class="modal-content builder-modal">
+            <span class="close-button" id="close-pizza-extras-builder-modal">&times;</span>
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Adicionais para sua Pizza</h3>
+            <div id="pizza-extras-ingredients-container" class="mb-4 max-h-80 overflow-y-auto p-2"></div>
+            <div class="flex justify-between items-center bg-gray-100 p-4 rounded-lg mt-4">
+                <span class="text-lg font-bold">Total da Pizza:</span>
+                <span id="pizza-extras-total-price" class="text-2xl font-bold text-red-600">R$ 0,00</span>
+            </div>
+            <button id="add-pizza-with-extras-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-full transition w-full mt-4">
+                Confirmar Adicionais
+            </button>
+        </div>
+    </div>
 
     <footer class="bg-gray-800 text-white py-8 px-4">
         <div class="max-w-6xl mx-auto">
@@ -881,6 +909,7 @@
             let allPromotionsData = [];
             let deliveryFeesData = [];
             let allBurgerIngredients = {};
+            let allPizzaIngredients = {}; // NOVO
             let isSelectingHalfPizza = false; 
             let isFirstHalfPromotional = false; 
             let deferredPrompt; 
@@ -987,6 +1016,17 @@
             const socialLinksContainer = document.getElementById('social-links-container');
             const pickupCheckbox = document.getElementById('pickupCheckbox');
             const addressFieldsContainer = document.getElementById('address-fields-container');
+
+            // NOVO: Elementos para os adicionais da pizza
+            const askPizzaExtrasModal = document.getElementById('ask-pizza-extras-modal');
+            const askExtrasYesBtn = document.getElementById('ask-extras-yes-btn');
+            const askExtrasNoBtn = document.getElementById('ask-extras-no-btn');
+            const pizzaExtrasBuilderModal = document.getElementById('pizza-extras-builder-modal');
+            const closePizzaExtrasBuilderModalBtn = document.getElementById('close-pizza-extras-builder-modal');
+            const pizzaExtrasIngredientsContainer = document.getElementById('pizza-extras-ingredients-container');
+            const pizzaExtrasTotalPrice = document.getElementById('pizza-extras-total-price');
+            const addPizzaWithExtrasBtn = document.getElementById('add-pizza-with-extras-btn');
+
 
             let currentPizzaData = {}; 
             let firstHalfPizza = null; 
@@ -1286,6 +1326,16 @@
                         acc[current.category].push(current);
                         return acc;
                     }, {});
+
+                    // NOVO: Carrega os ingredientes da pizza
+                    const rawPizzaIngredients = data.ingredientesPizza || [];
+                     allPizzaIngredients = rawPizzaIngredients.reduce((acc, current) => {
+                        const category = current.category || 'Adicionais';
+                        if (!acc[category]) acc[category] = [];
+                        acc[category].push(current);
+                        return acc;
+                    }, {});
+
 
                     contactInfo = data.contact.reduce((acc, curr) => {
                         if (curr.data && curr.value) acc[curr.data.toLowerCase().replace(/[^a-z0-9]/g, '')] = curr.value;
@@ -1636,10 +1686,12 @@
                         const selectedPriceKey = this.dataset.priceKey;
                         const newName = `${selectedSlices} FATIAS: ${currentPizzaData.name}`;
                         addToOrder({
+                            id: Date.now() + Math.random(), // Unique ID for each item in cart
                             type: 'full', name: newName, price: currentPizzaData[selectedPriceKey], 
                             description: currentPizzaData.description,
                             category: formatPizzaCategory(currentPizzaData.category),
-                            selected_slices: selectedSlices
+                            selected_slices: selectedSlices,
+                            extras: []
                         }, this, currentPizzaData.imageUrl); 
                         pizzaOptionModal.style.display = 'none';
                         updatePromotionButtonVisibility(); 
@@ -1743,9 +1795,11 @@
                     const combinedDescription = `${firstHalfPizza.description.replace('Primeira metade: ', '')} e ${item.description}`;
 
                     addToOrder({
+                        id: Date.now() + Math.random(),
                         type: 'split', name: combinedName, price: combinedPrice,
                         description: combinedDescription, category: 'PIZZA(s) MEIA A MEIA',
-                        selected_slices: firstHalfPizza.selected_slices
+                        selected_slices: firstHalfPizza.selected_slices,
+                        extras: []
                     }, clickedButton, itemImageUrl); 
 
                     firstHalfPizza = null;
@@ -1760,17 +1814,22 @@
                     openPizzaOptionsModal(item);
                 } else { 
                     addToOrder({
+                        id: Date.now() + Math.random(),
                         type: 'full',
                         name: item.name,
                         price: item.basePrice, 
                         description: item.description,
-                        category: item.category
+                        category: item.category,
+                        extras: []
                     }, clickedButton, itemImageUrl); 
                 }
             }
             
             function addToOrder(item, clickedButton = null, itemImageUrl = null) {
-                order.push(item);
+                const uniqueId = item.id || (Date.now() + Math.random());
+                const itemWithId = { ...item, id: uniqueId };
+                
+                order.push(itemWithId);
                 updateOrderDisplay();
                 updateCartCount();
 
@@ -1779,10 +1838,16 @@
                 }
                 
                 showTemporaryFeedback('✔️ Adicionado ao pedido!', 'bg-green-500');
+
+                if (item.type === 'full' || item.type === 'split') {
+                    showAskForExtrasModal(uniqueId);
+                }
             }
 
             function addToOrderOnly(item, clickedButton = null, itemImageUrl = null) {
-                order.push(item);
+                const uniqueId = item.id || (Date.now() + Math.random());
+                const itemWithId = { ...item, id: uniqueId };
+                order.push(itemWithId);
                 updateOrderDisplay();
                 updateCartCount();
                 if (clickedButton) {
@@ -1834,8 +1899,7 @@
             function updateOrderDisplay() {
                 let subtotal = 0;
 
-                const nonDiscountItems = order.filter(item => item.type !== 'discount');
-                nonDiscountItems.forEach((item) => {
+                order.forEach((item) => {
                     subtotal += item.price;
                 });
                 
@@ -1864,12 +1928,6 @@
                             itemName = `<i class="fas fa-tags text-red-600 mr-2"></i> ${item.name}`;
                         } else if (item.type === 'custom_burger') {
                             itemName = `<i class="fas fa-hamburger text-red-600 mr-2"></i> ${item.name}`;
-                            const ingredientsListHtml = `
-                                <ul class="text-xs text-gray-500 mt-1 pl-4 list-disc list-inside">
-                                    ${item.ingredients.map(ing => `<li>${ing.name}</li>`).join('')}
-                                </ul>
-                            `;
-                            itemDescription = ingredientsListHtml;
                         } else if (item.type === 'discount') {
                             return;
                         }
@@ -1877,18 +1935,37 @@
                         const isLastItem = (index === order.length - 1);
                         const borderClass = isLastItem && !selectedPaymentMethod && !selectedAddress.bairro && !selectedAddress.clientName ? '' : 'border-b border-gray-100';
 
+                        let extrasHtml = '';
+                        if (item.extras && item.extras.length > 0) {
+                            extrasHtml += '<ul class="text-xs text-gray-500 mt-1 pl-4 list-disc list-inside">';
+                            item.extras.forEach(extra => {
+                                extrasHtml += `<li>${extra.name} (${extra.placement}) +R$ ${extra.price.toFixed(2).replace('.',',')}</li>`;
+                            });
+                             extrasHtml += '</ul>';
+                        }
+                        
+                        let extrasButtonHtml = '';
+                        if (item.type === 'full' || item.type === 'split') {
+                            const buttonText = (item.extras && item.extras.length > 0) ? 'Editar Adicionais' : 'Incluir Adicionais';
+                            extrasButtonHtml = `<button class="edit-extras-btn text-xs text-blue-600 hover:underline" data-order-index="${index}">${buttonText}</button>`;
+                        }
+
                         itemsHTML += `
-                            <div class="flex justify-between items-center py-3 ${borderClass}">
-                                <div class="flex-1">
-                                    <p class="font-medium">${itemName}</p>
-                                    ${item.type === 'custom_burger' ? itemDescription : `<p class="text-sm text-gray-500">${itemDescription}</p>`}
+                            <div class="py-3 ${borderClass}">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex-1">
+                                        <p class="font-medium">${itemName}</p>
+                                        <div class="text-sm text-gray-500">${itemDescription}</div>
+                                        ${extrasHtml}
+                                    </div>
+                                    <div class="flex items-center">
+                                        ${priceHtml}
+                                        <button data-index="${index}" class="remove-item-btn text-red-500 hover:text-red-700">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </div>
                                 </div>
-                                <div class="flex items-center">
-                                    ${priceHtml}
-                                    <button data-index="${index}" class="remove-item-btn text-red-500 hover:text-red-700">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
-                                </div>
+                                ${extrasButtonHtml}
                             </div>
                         `;
                     });
@@ -1989,8 +2066,9 @@
             }
             
             function updateCartCount() {
-                if (order.length > 0) {
-                    cartCount.textContent = order.length;
+                const itemCount = order.filter(item => item.id !== 'pending-half-pizza').length;
+                if (itemCount > 0) {
+                    cartCount.textContent = itemCount;
                     cartCount.classList.remove('hidden');
                 } else {
                     cartCount.classList.add('hidden');
@@ -2004,9 +2082,7 @@
 
                 let subtotal = 0;
                 order.forEach(item => {
-                    if (item.type !== 'discount') {
-                        subtotal += item.price;
-                    }
+                    subtotal += item.price;
                 });
                 
                 let finalDiscountAmount = 0;
@@ -2061,9 +2137,7 @@
             function calculateOrderTotal() {
                 let currentSubtotal = 0;
                 order.forEach(item => {
-                    if (item.type !== 'discount') {
-                        currentSubtotal += (item.price || 0);
-                    }
+                    currentSubtotal += (item.price || 0);
                 });
 
                 let finalDiscountAmount = 0;
@@ -2165,6 +2239,7 @@
                 const promotion = allPromotionsData.find(p => p.id === promoId);
                 if (promotion) {
                     order.push({
+                        id: Date.now() + Math.random(),
                         type: 'promotion',
                         name: promotion.name,
                         price: promotion.promoPrice,
@@ -2216,6 +2291,7 @@
                             const item = allMenuData.find(i => i.id === itemId);
                             if (item) {
                                 addToOrder({
+                                    id: Date.now() + Math.random(),
                                     type: 'full',
                                     name: item.name,
                                     price: item.basePrice,
@@ -2675,6 +2751,12 @@
                         removeItem(indexToRemove);
                     }
                 }
+
+                const editExtrasBtn = event.target.closest('.edit-extras-btn');
+                if (editExtrasBtn) {
+                    const orderIndex = parseInt(editExtrasBtn.dataset.orderIndex, 10);
+                    openPizzaExtrasBuilderModal(orderIndex);
+                }
             });
 
             closePizzaOptionModalBtn.addEventListener('click', function() {
@@ -2703,6 +2785,12 @@
                 }
                  if (event.target == addressInputModal) {
                     hideAddressInputModal();
+                }
+                if (event.target == askPizzaExtrasModal) {
+                    askPizzaExtrasModal.style.display = 'none';
+                }
+                if (event.target == pizzaExtrasBuilderModal) {
+                    pizzaExtrasBuilderModal.style.display = 'none';
                 }
             });
 
@@ -2952,6 +3040,27 @@
             editDeliveryAddressBtn.addEventListener('click', function() {
                 showAddressInputModal(false);
             });
+            
+            // NOVO: Listeners para o modal de adicionais da pizza
+            askExtrasYesBtn.addEventListener('click', () => {
+                const orderItemId = askPizzaExtrasModal.dataset.orderItemId;
+                const orderIndex = order.findIndex(item => item.id == orderItemId);
+                if (orderIndex !== -1) {
+                    openPizzaExtrasBuilderModal(orderIndex);
+                }
+                askPizzaExtrasModal.style.display = 'none';
+            });
+            
+            askExtrasNoBtn.addEventListener('click', () => {
+                askPizzaExtrasModal.style.display = 'none';
+            });
+            
+            closePizzaExtrasBuilderModalBtn.addEventListener('click', () => {
+                 pizzaExtrasBuilderModal.style.display = 'none';
+            });
+            
+            addPizzaWithExtrasBtn.addEventListener('click', confirmPizzaExtras);
+
 
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('service-worker.js', { scope: './' })
@@ -3021,3 +3130,4 @@
     </script>
 </body>
 </html>
+
