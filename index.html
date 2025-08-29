@@ -935,6 +935,7 @@
             let ingredientVisibility = {};
             let ingredientStatus = {};
             let pizzaHalfStatus = {};
+            let currentPizzaExtrasState = {}; // NOVO: Para gerenciar o estado dos adicionais no modal
             
             let selectedAddress = {
                 clientName: null, 
@@ -2678,7 +2679,7 @@
                 const txid = "pedido" + Date.now();
                 return gerarPayload(pixKey, amount, merchantName, merchantCity, txid);
             }
-
+            
             function showAskForExtrasModal(orderItemId) {
                 askPizzaExtrasModal.dataset.orderItemId = orderItemId;
                 askPizzaExtrasModal.style.display = 'flex';
@@ -2692,6 +2693,17 @@
                 const scopeButtonsContainer = document.getElementById('pizza-extras-scope-buttons');
                 scopeButtonsContainer.innerHTML = '';
 
+                // Initialize state for the modal
+                currentPizzaExtrasState = { metade1: [], metade2: [], toda: [] };
+                if (pizzaItem.extras && pizzaItem.extras.length > 0) {
+                    pizzaItem.extras.forEach(extra => {
+                        const placement = extra.placement.toLowerCase().replace('ª', '').replace(' pizza', '').replace(' ', '');
+                        if (currentPizzaExtrasState[placement]) {
+                            currentPizzaExtrasState[placement].push(extra);
+                        }
+                    });
+                }
+                
                 if (pizzaItem.type === 'split') {
                     const half1Name = pizzaItem.name.split(' Meia ')[1].split(' & ')[0];
                     const half2Name = pizzaItem.name.split(' & Meia ')[1];
@@ -2721,7 +2733,6 @@
             }
 
             function renderPizzaExtrasList(orderIndex) {
-                const pizzaItem = order[orderIndex];
                 const activeScope = document.querySelector('#pizza-extras-scope-buttons .active').dataset.scope;
                 pizzaExtrasIngredientsContainer.innerHTML = '';
 
@@ -2735,91 +2746,67 @@
                         const priceDisplay = ingredient.price > 0 ? `+ R$ ${ingredient.price.toFixed(2).replace('.', ',')}` : '';
                         const optionDiv = document.createElement('div');
                         optionDiv.className = 'ingredient-option';
-                        const isChecked = pizzaItem.extras.some(extra => extra.name === ingredient.name && extra.placement.toLowerCase().includes(activeScope.toLowerCase()));
+                        const isChecked = currentPizzaExtrasState[activeScope]?.some(extra => extra.name === ingredient.name);
                         
                         optionDiv.innerHTML = `
-                            <label class="flex items-center w-full">
-                                <input type="checkbox" data-name="${ingredient.name}" data-price="${ingredient.price}" data-category="${categoryName}" class="form-checkbox" ${isChecked ? 'checked' : ''}>
+                            <label class="flex items-center w-full cursor-pointer">
+                                <input type="checkbox" data-name="${ingredient.name}" data-price="${ingredient.price}" class="form-checkbox" ${isChecked ? 'checked' : ''}>
                                 <span class="ml-2 flex-grow">${ingredient.name}</span>
                                 <span class="price">${priceDisplay}</span>
                             </label>
                         `;
 
-                        optionDiv.querySelector('input').addEventListener('change', () => updatePizzaExtrasPrice(orderIndex));
+                        optionDiv.querySelector('input').addEventListener('change', (e) => handleExtraSelectionChange(e.target, orderIndex, ingredient));
                         categoryDiv.appendChild(optionDiv);
                     });
                     pizzaExtrasIngredientsContainer.appendChild(categoryDiv);
                 }
             }
 
-            function updatePizzaExtrasPrice(orderIndex) {
-                 const pizzaItem = order[orderIndex];
-                 let basePrice = pizzaItem.price;
+            function handleExtraSelectionChange(checkbox, orderIndex, ingredient) {
+                const activeScope = document.querySelector('#pizza-extras-scope-buttons .active').dataset.scope;
+                
+                if (checkbox.checked) {
+                    if (!currentPizzaExtrasState[activeScope].some(extra => extra.name === ingredient.name)) {
+                        currentPizzaExtrasState[activeScope].push({
+                            name: ingredient.name,
+                            price: ingredient.price,
+                            placement: capitalizeFirstLetter(activeScope.replace('1', '1ª').replace('2', '2ª'))
+                        });
+                    }
+                } else {
+                    currentPizzaExtrasState[activeScope] = currentPizzaExtrasState[activeScope].filter(extra => extra.name !== ingredient.name);
+                }
+                
+                updatePizzaExtrasPrice(orderIndex);
+            }
 
-                 // Recalcula o preço base removendo os adicionais já existentes
-                 if (pizzaItem.extras && pizzaItem.extras.length > 0) {
+            function updatePizzaExtrasPrice(orderIndex) {
+                const pizzaItem = order[orderIndex];
+                
+                let basePrice = pizzaItem.price;
+                if (pizzaItem.extras && pizzaItem.extras.length > 0) {
                     pizzaItem.extras.forEach(extra => {
                         basePrice -= extra.price;
                     });
-                 }
+                }
 
-                let extrasPrice = 0;
-                // Coleta todos os adicionais do modal e calcula o preço
-                 const tempExtras = getTemporaryExtras();
-                 tempExtras.forEach(extra => {
-                    extrasPrice += extra.price;
-                 });
-
-                pizzaExtrasTotalPrice.textContent = `R$ ${(basePrice + extrasPrice).toFixed(2).replace('.', ',')}`;
-            }
-
-            function getTemporaryExtras() {
-                const tempExtras = [];
-                document.querySelectorAll('#pizza-extras-scope-buttons .scope-button').forEach(btn => {
-                    const scope = btn.dataset.scope;
-                    pizzaExtrasBuilderModal.querySelectorAll(`input[type="checkbox"]`).forEach(input => {
-                        if (input.checked) {
-                             const extraExists = tempExtras.some(e => e.name === input.dataset.name && e.placement.toLowerCase().includes(scope));
-                             if (!extraExists) {
-                                // Lógica complexa para evitar duplicatas ao mudar de escopo, simplificando:
-                             }
-                        }
-                    });
-                });
-                
-                // Uma forma mais simples: apenas lê o estado atual e recalcula
-                pizzaExtrasBuilderModal.querySelectorAll('input[type="checkbox"]:checked').forEach(input => {
-                     const activeScope = document.querySelector('#pizza-extras-scope-buttons .active').dataset.scope;
-                     const name = input.dataset.name;
-                     const price = parseFloat(input.dataset.price);
-
-                     tempExtras.push({name, price, placement: activeScope});
-                });
-
-                // A lógica de preço precisa ser mais robusta, somando todos os extras independente do escopo
-                let finalTempExtras = [];
                 let totalExtrasPrice = 0;
-                 pizzaExtrasBuilderModal.querySelectorAll('input[type="checkbox"]').forEach(input => {
-                    if (input.checked) {
-                        const activeScope = document.querySelector('#pizza-extras-scope-buttons .active').dataset.scope; // Sim, isso é um hack. Idealmente, o estado seria gerenciado fora do DOM
-                        finalTempExtras.push({ name: input.dataset.name, price: parseFloat(input.dataset.price), placement: activeScope });
-                    }
-                 });
-                 // Esta parte está ficando complexa demais. Vou simplificar drasticamente a lógica de preço.
-                 let currentExtrasPrice = 0;
-                 pizzaExtrasBuilderModal.querySelectorAll('input[type="checkbox"]:checked').forEach(input => {
-                    currentExtrasPrice += parseFloat(input.dataset.price);
-                 });
-                 return currentExtrasPrice;
+                for (const scope in currentPizzaExtrasState) {
+                    currentPizzaExtrasState[scope].forEach(extra => {
+                        totalExtrasPrice += extra.price;
+                    });
+                }
+
+                pizzaExtrasTotalPrice.textContent = `R$ ${(basePrice + totalExtrasPrice).toFixed(2).replace('.', ',')}`;
             }
 
             function confirmPizzaExtras() {
-                const orderIndex = parseInt(pizzaExtrasBuilderModal.dataset.orderIndex, 10);
+                const orderIndex = parseInt(pizzaExtrasBuilderModal.dataset.orderIndex);
                 if (isNaN(orderIndex)) return;
                 
                 const pizzaItem = order[orderIndex];
                 
-                // 1. Calcula o preço base da pizza (sem nenhum extra)
                 let basePrice = pizzaItem.price;
                 if (pizzaItem.extras && pizzaItem.extras.length > 0) {
                     pizzaItem.extras.forEach(extra => {
@@ -2827,58 +2814,27 @@
                     });
                 }
                 
-                // 2. Monta a nova lista de extras com base em tudo que está selecionado no modal
-                const newExtras = [];
-                const tempSelections = {}; // Para evitar duplicatas
-
-                // Itera em cada botão de escopo para coletar as seleções
-                pizzaExtrasBuilderModal.querySelectorAll('#pizza-extras-scope-buttons .scope-button').forEach(scopeBtn => {
-                    const scope = scopeBtn.dataset.scope;
-                    // Preciso de uma forma de saber quais checkboxes pertencem a qual escopo... Isso está errado.
-                });
-                // A arquitetura atual do modal não permite isso. Refazendo a lógica.
-                
                 const finalExtras = [];
                 let finalExtrasPrice = 0;
+                const addedExtras = new Set();
 
-                const selections = {}; // ingredientName -> [scopes]
-                pizzaExtrasBuilderModal.querySelectorAll('.ingredient-option input[type="checkbox"]').forEach(input => {
-                    // Esta lógica está errada. Precisa de um estado para cada escopo.
-                });
-                // A lógica está se provando muito complexa para o tempo que tenho. Simplificação radical:
-                // O preço vai ser atualizado, e a confirmação vai salvar o que está na tela.
-                
-                const currentOrderIndex = parseInt(pizzaExtrasBuilderModal.dataset.orderIndex);
-                const currentPizza = order[currentOrderIndex];
-                
-                // Limpa os extras antigos para recalcular
-                let pizzaBasePrice = currentPizza.price;
-                if(currentPizza.extras.length > 0) {
-                    currentPizza.extras.forEach(e => pizzaBasePrice -= e.price);
+                for (const scope in currentPizzaExtrasState) {
+                    currentPizzaExtrasState[scope].forEach(extra => {
+                        const key = `${extra.name}-${extra.placement}`;
+                        if (!addedExtras.has(key)) {
+                            finalExtras.push(extra);
+                            finalExtrasPrice += extra.price;
+                            addedExtras.add(key);
+                        }
+                    });
                 }
-                currentPizza.extras = [];
-
-                let extrasPrice = 0;
-                pizzaExtrasBuilderModal.querySelectorAll('.ingredient-option input:checked').forEach(input => {
-                    const placement = input.closest('.ingredient-category').dataset.activeScope; // Esta é a peça que falta
-                     const ingredientName = input.dataset.name;
-                     const ingredientPrice = parseFloat(input.dataset.price);
-                     const ingredientCategory = input.dataset.category;
-                     
-                     currentPizza.extras.push({
-                         name: ingredientName,
-                         price: ingredientPrice,
-                         placement: capitalizeFirstLetter(placement)
-                     });
-                     extrasPrice += ingredientPrice;
-                });
-
-                currentPizza.price = pizzaBasePrice + extrasPrice;
+                
+                pizzaItem.extras = finalExtras;
+                pizzaItem.price = basePrice + finalExtrasPrice;
+                
                 updateOrderDisplay();
                 pizzaExtrasBuilderModal.style.display = 'none';
-
             }
-
 
             loadMenuAndRender();
 
@@ -3342,4 +3298,3 @@
     </script>
 </body>
 </html>
-
