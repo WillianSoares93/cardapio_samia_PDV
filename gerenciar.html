@@ -82,8 +82,18 @@
                         <select id="item-category-select" class="md:col-span-1 p-2 border rounded-md"></select>
                         <div id="item-status-filters" class="md:col-span-1 flex items-center justify-around bg-gray-100 p-1 rounded-md"></div>
                     </div>
-                    <div id="item-availability-list" class="space-y-4 max-h-[60vh] overflow-y-auto p-2">
-                        <p class="text-gray-500">Carregando itens...</p>
+                    <div class="space-y-4 max-h-[60vh] overflow-y-auto p-2">
+                        <div class="flex items-center justify-between p-3 border-b sticky top-0 bg-gray-50 z-10">
+                            <span class="font-bold text-gray-600 w-2/5">Item</span>
+                            <div class="flex items-center justify-around w-3/5">
+                                <span class="font-bold text-gray-600 w-1/3 text-center">Disponível</span>
+                                <span class="font-bold text-gray-600 w-1/3 text-center">Visível</span>
+                                <span class="font-bold text-gray-600 w-1/3 text-center">Aceita Adicionais</span>
+                            </div>
+                        </div>
+                        <div id="item-availability-list" class="space-y-4">
+                            <p class="text-gray-500">Carregando itens...</p>
+                        </div>
                     </div>
                 </div>
 
@@ -93,8 +103,17 @@
                         <select id="ingredient-category-select" class="md:col-span-1 p-2 border rounded-md"></select>
                         <div id="ingredient-status-filters" class="md:col-span-1 flex items-center justify-around bg-gray-100 p-1 rounded-md"></div>
                     </div>
-                    <div id="ingredient-availability-list" class="space-y-4 max-h-[60vh] overflow-y-auto p-2">
-                        <p class="text-gray-500">Carregando ingredientes...</p>
+                     <div class="space-y-4 max-h-[60vh] overflow-y-auto p-2">
+                        <div class="flex items-center justify-between p-3 border-b sticky top-0 bg-gray-50 z-10">
+                            <span class="font-bold text-gray-600 w-2/5">Ingrediente</span>
+                            <div class="flex items-center justify-around w-3/5">
+                                <span class="font-bold text-gray-600 w-1/2 text-center">Disponível</span>
+                                <span class="font-bold text-gray-600 w-1/2 text-center">Visível</span>
+                            </div>
+                        </div>
+                        <div id="ingredient-availability-list" class="space-y-4">
+                            <p class="text-gray-500">Carregando ingredientes...</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -140,14 +159,16 @@
         let allIngredients = [];
         let itemStatus = {};
         let itemVisibility = {};
-        let pizzaHalfStatus = {}; // NOVO: Estado para controle de meia pizza
+        let itemExtrasStatus = {}; // NOVO
         let ingredientStatus = {};
         let ingredientVisibility = {};
 
         async function initializeManager() {
             await fetchMenuData();
+            // Renderiza as listas iniciais
             renderItemAvailabilityList();
             renderIngredientAvailabilityList();
+            // Configura os listeners e filtros
             listenToStatusChanges();
             setupTabs();
             setupFilters();
@@ -212,9 +233,8 @@
                 updateAllRows();
                 filterLists();
             });
-            // NOVO: Listener para o status de meia pizza
-            onSnapshot(doc(db, "config", "pizza_half_status"), (doc) => {
-                pizzaHalfStatus = doc.exists() ? doc.data() : {};
+            onSnapshot(doc(db, "config", "item_extras_status"), (doc) => { // NOVO
+                itemExtrasStatus = doc.exists() ? doc.data() : {};
                 updateAllRows();
                 filterLists();
             });
@@ -241,27 +261,31 @@
                 const availabilityToggle = row.querySelector('.availability-toggle');
                 const visibilityToggle = row.querySelector('.visibility-toggle');
                 
-                if (availabilityToggle) availabilityToggle.checked = isAvailable;
-                if (visibilityToggle) visibilityToggle.checked = isVisible;
+                availabilityToggle.checked = isAvailable;
+                visibilityToggle.checked = isVisible;
                 
-                if (availabilityToggle) {
-                    availabilityToggle.disabled = !isVisible;
-                    availabilityToggle.closest('label').classList.toggle('opacity-50', !isVisible);
+                availabilityToggle.disabled = !isVisible;
+                if (!isVisible) {
+                    availabilityToggle.closest('label').classList.add('opacity-50');
+                } else {
+                     availabilityToggle.closest('label').classList.remove('opacity-50');
                 }
                 
-                if (row.querySelector('.status-text-availability')) {
-                    row.querySelector('.status-text-availability').textContent = isAvailable ? 'Disponível' : 'Esgotado';
-                }
-                if (row.querySelector('.status-text-visibility')) {
-                    row.querySelector('.status-text-visibility').textContent = isVisible ? 'Visível' : 'Oculto';
-                }
+                if (type === 'item') {
+                    const item = allItems.find(i => i.id === itemId);
+                    const defaultExtras = item ? item.isPizza : false;
+                    const acceptsExtras = itemExtrasStatus[itemId] === undefined ? defaultExtras : itemExtrasStatus[itemId];
 
-                // NOVO: Atualiza o toggle de meia pizza se existir
-                const halfPizzaToggle = row.querySelector('.half-pizza-toggle');
-                if (halfPizzaToggle) {
-                    const allowsHalf = pizzaHalfStatus[itemId] !== false;
-                    halfPizzaToggle.checked = allowsHalf;
-                    row.querySelector('.status-text-half-pizza').textContent = allowsHalf ? 'Meia a Meia' : 'Apenas Inteira';
+                    const extrasToggle = row.querySelector('.extras-toggle');
+                    if (extrasToggle) {
+                        extrasToggle.checked = acceptsExtras;
+                        extrasToggle.disabled = !isVisible;
+                         if (!isVisible) {
+                            extrasToggle.closest('label').classList.add('opacity-50');
+                        } else {
+                            extrasToggle.closest('label').classList.remove('opacity-50');
+                        }
+                    }
                 }
             });
         }
@@ -288,7 +312,7 @@
             for (const category in itemsByCategory) {
                 const categoryDiv = document.createElement('div');
                 categoryDiv.dataset.categoryGroup = category;
-                categoryDiv.innerHTML = `<h3 class="text-lg font-medium text-gray-700">${category}</h3>`;
+                categoryDiv.innerHTML = `<h3 class="text-lg font-medium text-gray-700 mt-4 border-t pt-4">${category}</h3>`;
                 const list = document.createElement('div');
                 list.className = 'mt-2 space-y-3';
                 itemsByCategory[category].forEach(item => {
@@ -326,7 +350,7 @@
 
         function createAvailabilityRow(item, type) {
             const row = document.createElement('div');
-            row.className = 'availability-row flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border rounded-md bg-gray-50';
+            row.className = 'availability-row flex items-center justify-between p-3 border rounded-md bg-gray-50';
             row.dataset.name = item.name.toLowerCase();
             row.dataset.category = item.category || 'Outros';
             row.dataset.itemId = item.id;
@@ -334,87 +358,79 @@
             const isAvailable = (type === 'item' ? itemStatus[item.id] : ingredientStatus[item.id]) !== false;
             const isVisible = (type === 'item' ? itemVisibility[item.id] : ingredientVisibility[item.id]) !== false;
             
-            // NOVO: Verifica se é pizza e se permite meia a meia
-            const isPizza = type === 'item' && allItems.find(i => i.id === item.id)?.isPizza;
-            const allowsHalf = isPizza ? (pizzaHalfStatus[item.id] !== false) : null;
-
-            let halfPizzaToggleHtml = '';
-            if (isPizza) {
-                halfPizzaToggleHtml = `
-                    <label class="flex items-center cursor-pointer">
-                        <span class="status-text-half-pizza mr-3 text-sm font-medium text-gray-900">${allowsHalf ? 'Meia a Meia' : 'Apenas Inteira'}</span>
+            let extrasToggleHtml = '';
+            if (type === 'item') {
+                const defaultExtras = item.isPizza;
+                const acceptsExtras = itemExtrasStatus[item.id] === undefined ? defaultExtras : itemExtrasStatus[item.id];
+                extrasToggleHtml = `
+                    <label class="flex items-center justify-center cursor-pointer w-1/3 ${!isVisible ? 'opacity-50' : ''}">
                         <div class="relative">
-                            <input type="checkbox" class="sr-only peer half-pizza-toggle" ${allowsHalf ? 'checked' : ''}>
+                            <input type="checkbox" class="sr-only peer extras-toggle" data-type="extras" ${acceptsExtras ? 'checked' : ''} ${!isVisible ? 'disabled' : ''}>
                             <div class="toggle-bg w-11 h-6 bg-gray-200 rounded-full peer"></div>
                         </div>
                     </label>
                 `;
             }
-            
+
             row.innerHTML = `
-                <span class="font-medium text-gray-800">${item.name}</span>
-                <div class="flex items-center space-x-6 mt-2 sm:mt-0">
-                    ${halfPizzaToggleHtml}
-                    <label class="flex items-center cursor-pointer ${!isVisible ? 'opacity-50' : ''}">
-                        <span class="status-text-availability mr-3 text-sm font-medium text-gray-900">${isAvailable ? 'Disponível' : 'Esgotado'}</span>
+                <span class="font-medium text-gray-800 w-2/5">${item.name}</span>
+                <div class="flex items-center justify-around w-3/5">
+                    <label class="flex items-center justify-center cursor-pointer w-1/3 ${!isVisible ? 'opacity-50' : ''}">
                         <div class="relative">
-                            <input type="checkbox" class="sr-only peer availability-toggle" ${isAvailable ? 'checked' : ''} ${!isVisible ? 'disabled' : ''}>
+                            <input type="checkbox" class="sr-only peer availability-toggle" data-type="availability" ${isAvailable ? 'checked' : ''} ${!isVisible ? 'disabled' : ''}>
                             <div class="toggle-bg w-11 h-6 bg-gray-200 rounded-full peer"></div>
                         </div>
                     </label>
-                    <label class="flex items-center cursor-pointer">
-                        <span class="status-text-visibility mr-3 text-sm font-medium text-gray-900">${isVisible ? 'Visível' : 'Oculto'}</span>
+                    <label class="flex items-center justify-center cursor-pointer w-1/3">
                         <div class="relative">
-                            <input type="checkbox" class="sr-only peer visibility-toggle" ${isVisible ? 'checked' : ''}>
+                            <input type="checkbox" class="sr-only peer visibility-toggle" data-type="visibility" ${isVisible ? 'checked' : ''}>
                             <div class="toggle-bg w-11 h-6 bg-gray-200 rounded-full peer"></div>
                         </div>
                     </label>
+                    ${extrasToggleHtml}
                 </div>
             `;
 
-            row.querySelector('.availability-toggle')?.addEventListener('change', (e) => {
-                updateConfig(type === 'item' ? 'item_status' : 'ingredient_status', item.id, e.target.checked);
+            row.querySelector('.availability-toggle').addEventListener('change', (e) => {
+                updateStatus(item.id, type, e.target.checked, null, null);
             });
-            row.querySelector('.visibility-toggle')?.addEventListener('change', (e) => {
+            row.querySelector('.visibility-toggle').addEventListener('change', (e) => {
                 const newVisibility = e.target.checked;
-                updateConfig(type === 'item' ? 'item_visibility' : 'ingredient_visibility', item.id, newVisibility);
-                // Se ocultar, também marca como indisponível
-                if (!newVisibility) {
-                    updateConfig(type === 'item' ? 'item_status' : 'ingredient_status', item.id, false);
-                }
+                updateStatus(item.id, type, newVisibility, newVisibility, null);
             });
-            // NOVO: Event listener para o toggle de meia pizza
-            row.querySelector('.half-pizza-toggle')?.addEventListener('change', (e) => {
-                updateConfig('pizza_half_status', item.id, e.target.checked);
-            });
+            
+            const extrasToggle = row.querySelector('.extras-toggle');
+            if (extrasToggle) {
+                 extrasToggle.addEventListener('change', (e) => {
+                    updateStatus(item.id, type, null, null, e.target.checked);
+                });
+            }
 
             return row;
         }
 
-        async function updateConfig(docName, id, value) {
-            const docRef = doc(db, "config", docName);
-            let currentState;
-            if (docName === 'item_status') currentState = itemStatus;
-            else if (docName === 'item_visibility') currentState = itemVisibility;
-            else if (docName === 'pizza_half_status') currentState = pizzaHalfStatus;
-            else if (docName === 'ingredient_status') currentState = ingredientStatus;
-            else if (docName === 'ingredient_visibility') currentState = ingredientVisibility;
-            else return;
-
-            const dataToUpdate = { ...currentState };
-
-            if (value === true) {
-                // O padrão é true (disponível/visível/permite meia), então removemos a chave para economizar espaço
-                delete dataToUpdate[id];
-            } else {
-                // Se for false, definimos explicitamente
-                dataToUpdate[id] = false;
-            }
-            
+        async function updateStatus(id, type, isAvailable, isVisible, acceptsExtras) {
             try {
-                await setDoc(docRef, dataToUpdate);
+                if (isVisible !== null) {
+                    const visibilityCollection = type === 'item' ? 'item_visibility' : 'ingredient_visibility';
+                    const visibilityRef = doc(db, "config", visibilityCollection);
+                    await setDoc(visibilityRef, { [id]: isVisible }, { merge: true });
+                }
+                
+                const finalAvailability = (isVisible === false) ? false : isAvailable;
+                if (finalAvailability !== null) {
+                    const statusCollection = type === 'item' ? 'item_status' : 'ingredient_status';
+                    const statusRef = doc(db, "config", statusCollection);
+                    await setDoc(statusRef, { [id]: finalAvailability }, { merge: true });
+                }
+
+                if (acceptsExtras !== null && type === 'item') {
+                    const extrasRef = doc(db, "config", "item_extras_status");
+                    await setDoc(extrasRef, { [id]: acceptsExtras }, { merge: true });
+                }
+
             } catch (error) {
-                console.error(`Erro ao atualizar ${docName}:`, error);
+                console.error("Erro ao atualizar status:", error);
                 alert("Não foi possível atualizar o status. Tente novamente.");
             }
         }
