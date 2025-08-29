@@ -235,6 +235,10 @@
                             <label class="flex items-center"><input type="radio" name="manual-payment" value="Pix" class="form-radio h-4 w-4 text-red-600"> <span class="ml-2">Pix</span></label>
                         </div>
                     </div>
+                    <div class="mt-4">
+                        <label for="manual-observation" class="block text-sm font-medium text-gray-700">Observações do Pedido</label>
+                        <textarea id="manual-observation" rows="2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Ex: Tirar cebola, troco para R$50, etc."></textarea>
+                    </div>
                 </div>
 
                 <div class="mt-6 flex justify-between items-center">
@@ -583,6 +587,7 @@
             let grupoMesas = null;
             let status = 'Em Preparo'; // Padrão para mesas
             const paymentMethod = document.querySelector('input[name="manual-payment"]:checked').value;
+            const observation = document.getElementById('manual-observation').value.trim();
 
             if (currentOrderType === 'mesa') {
                 endereco = { clientName: clientName, rua: "Mesa" };
@@ -627,7 +632,8 @@
                     "endereco.clientName": clientName,
                     "total.subtotal": subtotal,
                     "total.finalTotal": finalTotal,
-                    pagamento: paymentMethod
+                    pagamento: paymentMethod,
+                    observacao: observation
                 });
                 alert("Itens adicionados com sucesso!");
             } else {
@@ -637,7 +643,8 @@
                     total: { subtotal, finalTotal, deliveryFee, discount: 0 },
                     pagamento: paymentMethod,
                     status: status,
-                    criadoEm: serverTimestamp()
+                    criadoEm: serverTimestamp(),
+                    observacao: observation
                 };
                 if (grupoMesas) {
                     newOrder.grupoMesas = grupoMesas;
@@ -1325,3 +1332,4 @@
     </script>
 </body>
 </html>
+
