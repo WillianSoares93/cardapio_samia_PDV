@@ -84,11 +84,12 @@
                     </div>
                     <div class="space-y-4 max-h-[60vh] overflow-y-auto p-2">
                         <div class="flex items-center justify-between p-3 border-b sticky top-0 bg-gray-50 z-10">
-                            <span class="font-bold text-gray-600 w-2/5">Item</span>
-                            <div class="flex items-center justify-around w-3/5">
-                                <span class="font-bold text-gray-600 w-1/3 text-center">Disponível</span>
-                                <span class="font-bold text-gray-600 w-1/3 text-center">Visível</span>
-                                <span class="font-bold text-gray-600 w-1/3 text-center">Aceita Adicionais</span>
+                            <span class="font-bold text-gray-600 w-2/6">Item</span>
+                            <div class="flex items-center justify-around w-4/6">
+                                <span class="font-bold text-gray-600 w-1/4 text-center">Disponível</span>
+                                <span class="font-bold text-gray-600 w-1/4 text-center">Visível</span>
+                                <span class="font-bold text-gray-600 w-1/4 text-center">Aceita Adicionais</span>
+                                <span class="font-bold text-gray-600 w-1/4 text-center">Permite Meia</span>
                             </div>
                         </div>
                         <div id="item-availability-list" class="space-y-4">
@@ -159,16 +160,15 @@
         let allIngredients = [];
         let itemStatus = {};
         let itemVisibility = {};
-        let itemExtrasStatus = {}; // NOVO
+        let itemExtrasStatus = {}; 
+        let pizzaHalfStatus = {}; // RE-ADICIONADO
         let ingredientStatus = {};
         let ingredientVisibility = {};
 
         async function initializeManager() {
             await fetchMenuData();
-            // Renderiza as listas iniciais
             renderItemAvailabilityList();
             renderIngredientAvailabilityList();
-            // Configura os listeners e filtros
             listenToStatusChanges();
             setupTabs();
             setupFilters();
@@ -233,8 +233,13 @@
                 updateAllRows();
                 filterLists();
             });
-            onSnapshot(doc(db, "config", "item_extras_status"), (doc) => { // NOVO
+            onSnapshot(doc(db, "config", "item_extras_status"), (doc) => { 
                 itemExtrasStatus = doc.exists() ? doc.data() : {};
+                updateAllRows();
+                filterLists();
+            });
+            onSnapshot(doc(db, "config", "pizza_half_status"), (doc) => { // RE-ADICIONADO
+                pizzaHalfStatus = doc.exists() ? doc.data() : {};
                 updateAllRows();
                 filterLists();
             });
@@ -275,6 +280,7 @@
                     const item = allItems.find(i => i.id === itemId);
                     const defaultExtras = item ? item.isPizza : false;
                     const acceptsExtras = itemExtrasStatus[itemId] === undefined ? defaultExtras : itemExtrasStatus[itemId];
+                    const allowsHalf = pizzaHalfStatus[itemId] === undefined ? true : pizzaHalfStatus[itemId];
 
                     const extrasToggle = row.querySelector('.extras-toggle');
                     if (extrasToggle) {
@@ -284,6 +290,17 @@
                             extrasToggle.closest('label').classList.add('opacity-50');
                         } else {
                             extrasToggle.closest('label').classList.remove('opacity-50');
+                        }
+                    }
+
+                    const halfToggle = row.querySelector('.half-toggle');
+                    if (halfToggle) {
+                        halfToggle.checked = allowsHalf;
+                        halfToggle.disabled = !isVisible;
+                         if (!isVisible) {
+                            halfToggle.closest('label').classList.add('opacity-50');
+                        } else {
+                            halfToggle.closest('label').classList.remove('opacity-50');
                         }
                     }
                 }
@@ -358,75 +375,109 @@
             const isAvailable = (type === 'item' ? itemStatus[item.id] : ingredientStatus[item.id]) !== false;
             const isVisible = (type === 'item' ? itemVisibility[item.id] : ingredientVisibility[item.id]) !== false;
             
-            let extrasToggleHtml = '';
+            let togglesHtml = '';
             if (type === 'item') {
                 const defaultExtras = item.isPizza;
                 const acceptsExtras = itemExtrasStatus[item.id] === undefined ? defaultExtras : itemExtrasStatus[item.id];
-                extrasToggleHtml = `
-                    <label class="flex items-center justify-center cursor-pointer w-1/3 ${!isVisible ? 'opacity-50' : ''}">
-                        <div class="relative">
-                            <input type="checkbox" class="sr-only peer extras-toggle" data-type="extras" ${acceptsExtras ? 'checked' : ''} ${!isVisible ? 'disabled' : ''}>
-                            <div class="toggle-bg w-11 h-6 bg-gray-200 rounded-full peer"></div>
-                        </div>
-                    </label>
-                `;
+                const allowsHalf = item.isPizza ? (pizzaHalfStatus[item.id] === undefined ? true : pizzaHalfStatus[item.id]) : false;
+                
+                togglesHtml = `
+                    <div class="flex items-center justify-around w-4/6">
+                        <label class="flex items-center justify-center cursor-pointer w-1/4 ${!isVisible ? 'opacity-50' : ''}">
+                            <div class="relative">
+                                <input type="checkbox" class="sr-only peer availability-toggle" data-type="availability" ${isAvailable ? 'checked' : ''} ${!isVisible ? 'disabled' : ''}>
+                                <div class="toggle-bg w-11 h-6 bg-gray-200 rounded-full peer"></div>
+                            </div>
+                        </label>
+                        <label class="flex items-center justify-center cursor-pointer w-1/4">
+                            <div class="relative">
+                                <input type="checkbox" class="sr-only peer visibility-toggle" data-type="visibility" ${isVisible ? 'checked' : ''}>
+                                <div class="toggle-bg w-11 h-6 bg-gray-200 rounded-full peer"></div>
+                            </div>
+                        </label>
+                        <label class="flex items-center justify-center cursor-pointer w-1/4 ${!isVisible ? 'opacity-50' : ''}">
+                            <div class="relative">
+                                <input type="checkbox" class="sr-only peer extras-toggle" data-type="extras" ${acceptsExtras ? 'checked' : ''} ${!isVisible ? 'disabled' : ''}>
+                                <div class="toggle-bg w-11 h-6 bg-gray-200 rounded-full peer"></div>
+                            </div>
+                        </label>
+                         <label class="flex items-center justify-center cursor-pointer w-1/4 ${!isVisible || !item.isPizza ? 'opacity-50' : ''}">
+                            <div class="relative">
+                                <input type="checkbox" class="sr-only peer half-toggle" data-type="half" ${allowsHalf ? 'checked' : ''} ${!isVisible || !item.isPizza ? 'disabled' : ''}>
+                                <div class="toggle-bg w-11 h-6 bg-gray-200 rounded-full peer"></div>
+                            </div>
+                        </label>
+                    </div>`;
+            } else { // Ingredientes
+                 togglesHtml = `
+                    <div class="flex items-center justify-around w-3/5">
+                        <label class="flex items-center justify-center cursor-pointer w-1/2 ${!isVisible ? 'opacity-50' : ''}">
+                            <div class="relative">
+                                <input type="checkbox" class="sr-only peer availability-toggle" data-type="availability" ${isAvailable ? 'checked' : ''} ${!isVisible ? 'disabled' : ''}>
+                                <div class="toggle-bg w-11 h-6 bg-gray-200 rounded-full peer"></div>
+                            </div>
+                        </label>
+                        <label class="flex items-center justify-center cursor-pointer w-1/2">
+                            <div class="relative">
+                                <input type="checkbox" class="sr-only peer visibility-toggle" data-type="visibility" ${isVisible ? 'checked' : ''}>
+                                <div class="toggle-bg w-11 h-6 bg-gray-200 rounded-full peer"></div>
+                            </div>
+                        </label>
+                    </div>`;
             }
 
             row.innerHTML = `
-                <span class="font-medium text-gray-800 w-2/5">${item.name}</span>
-                <div class="flex items-center justify-around w-3/5">
-                    <label class="flex items-center justify-center cursor-pointer w-1/3 ${!isVisible ? 'opacity-50' : ''}">
-                        <div class="relative">
-                            <input type="checkbox" class="sr-only peer availability-toggle" data-type="availability" ${isAvailable ? 'checked' : ''} ${!isVisible ? 'disabled' : ''}>
-                            <div class="toggle-bg w-11 h-6 bg-gray-200 rounded-full peer"></div>
-                        </div>
-                    </label>
-                    <label class="flex items-center justify-center cursor-pointer w-1/3">
-                        <div class="relative">
-                            <input type="checkbox" class="sr-only peer visibility-toggle" data-type="visibility" ${isVisible ? 'checked' : ''}>
-                            <div class="toggle-bg w-11 h-6 bg-gray-200 rounded-full peer"></div>
-                        </div>
-                    </label>
-                    ${extrasToggleHtml}
-                </div>
+                <span class="font-medium text-gray-800 w-${type === 'item' ? '2/6' : '2/5'}">${item.name}</span>
+                ${togglesHtml}
             `;
 
             row.querySelector('.availability-toggle').addEventListener('change', (e) => {
-                updateStatus(item.id, type, e.target.checked, null, null);
+                updateStatus(item.id, type, { isAvailable: e.target.checked });
             });
             row.querySelector('.visibility-toggle').addEventListener('change', (e) => {
                 const newVisibility = e.target.checked;
-                updateStatus(item.id, type, newVisibility, newVisibility, null);
+                updateStatus(item.id, type, { isAvailable: newVisibility, isVisible: newVisibility });
             });
             
             const extrasToggle = row.querySelector('.extras-toggle');
             if (extrasToggle) {
                  extrasToggle.addEventListener('change', (e) => {
-                    updateStatus(item.id, type, null, null, e.target.checked);
+                    updateStatus(item.id, type, { acceptsExtras: e.target.checked });
+                });
+            }
+            const halfToggle = row.querySelector('.half-toggle');
+            if (halfToggle) {
+                 halfToggle.addEventListener('change', (e) => {
+                    updateStatus(item.id, type, { allowsHalf: e.target.checked });
                 });
             }
 
             return row;
         }
 
-        async function updateStatus(id, type, isAvailable, isVisible, acceptsExtras) {
+        async function updateStatus(id, type, { isAvailable, isVisible, acceptsExtras, allowsHalf }) {
             try {
-                if (isVisible !== null) {
+                if (isVisible !== undefined) {
                     const visibilityCollection = type === 'item' ? 'item_visibility' : 'ingredient_visibility';
                     const visibilityRef = doc(db, "config", visibilityCollection);
                     await setDoc(visibilityRef, { [id]: isVisible }, { merge: true });
                 }
                 
                 const finalAvailability = (isVisible === false) ? false : isAvailable;
-                if (finalAvailability !== null) {
+                if (finalAvailability !== undefined) {
                     const statusCollection = type === 'item' ? 'item_status' : 'ingredient_status';
                     const statusRef = doc(db, "config", statusCollection);
                     await setDoc(statusRef, { [id]: finalAvailability }, { merge: true });
                 }
 
-                if (acceptsExtras !== null && type === 'item') {
+                if (acceptsExtras !== undefined && type === 'item') {
                     const extrasRef = doc(db, "config", "item_extras_status");
                     await setDoc(extrasRef, { [id]: acceptsExtras }, { merge: true });
+                }
+                
+                if (allowsHalf !== undefined && type === 'item') {
+                    const halfRef = doc(db, "config", "pizza_half_status");
+                    await setDoc(halfRef, { [id]: allowsHalf }, { merge: true });
                 }
 
             } catch (error) {
@@ -497,3 +548,4 @@
 
 </body>
 </html>
+
