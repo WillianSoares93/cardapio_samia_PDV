@@ -1456,11 +1456,10 @@
                                 });
                             } else {
                                 let quantity = 0;
-                                if (existingItem) {
-                                    const existingIng = existingItem.ingredients.find(ing => ing.name.startsWith(ingredient.name));
+                                if (existingItem && existingItem.ingredients) {
+                                    const existingIng = existingItem.ingredients.find(ing => ing.name === ingredient.name);
                                     if (existingIng) {
-                                        const match = existingIng.name.match(/\(x(\d+)\)/);
-                                        quantity = match ? parseInt(match[1]) : 1;
+                                        quantity = existingIng.quantity || 0;
                                     }
                                 }
                                 label.innerHTML = `
@@ -2030,7 +2029,8 @@
                                 itemName = `<i class="fas fa-hamburger text-red-600 mr-2"></i> ${item.name}`;
                                 detailsHtml += '<ul class="text-xs text-gray-500 mt-1 pl-4 list-disc list-inside">';
                                 item.ingredients.forEach(ingredient => {
-                                    detailsHtml += `<li>${ingredient.name}</li>`;
+                                    const quantityText = ingredient.quantity > 1 ? ` (x${ingredient.quantity})` : '';
+                                    detailsHtml += `<li>${ingredient.name}${quantityText}</li>`;
                                 });
                                 detailsHtml += '</ul>';
                             }
