@@ -1498,7 +1498,7 @@
                 for (const categoryName in allBurgerIngredients) {
                     const isRequired = allBurgerIngredients[categoryName][0]?.isRequired || false;
                     if (isRequired) {
-                        const categoryDiv = document.querySelector(`.ingredient-category[data-category-name="${categoryName}"]`);
+                        const categoryDiv = burgerBuilderModal.querySelector(`.ingredient-category[data-category-name="${categoryName}"]`);
                         const checkedInput = categoryDiv.querySelector('input:checked');
                         let quantityCount = 0;
                         categoryDiv.querySelectorAll('.quantity-display').forEach(d => quantityCount += parseInt(d.textContent));
@@ -1511,27 +1511,31 @@
                 }
                 if (!allRequiredCategoriesFilled) return;
 
-                document.querySelectorAll('.ingredient-category').forEach(categoryDiv => {
+                // CORREÇÃO: O seletor agora busca apenas dentro do modal do hambúrguer.
+                burgerBuilderModal.querySelectorAll('.ingredient-category').forEach(categoryDiv => {
                     const categoryName = categoryDiv.dataset.categoryName;
-                    categoryDiv.querySelectorAll('input:checked').forEach(input => {
-                        const ingredient = allBurgerIngredients[categoryName].find(ing => ing.id === input.value);
-                        if (ingredient) {
-                            selectedIngredients.push({ name: ingredient.name, category: ingredient.category });
-                            finalTotal += ingredient.price;
-                        }
-                    });
-                    categoryDiv.querySelectorAll('.quantity-display').forEach(display => {
-                        const quantity = parseInt(display.textContent);
-                        if (quantity > 0) {
-                            const container = display.closest('[data-ingredient-id]');
-                            const ingredientId = container.dataset.ingredientId;
-                            const ingredient = allBurgerIngredients[categoryName].find(ing => ing.id === ingredientId);
+                    // Adicionei uma verificação para garantir que a categoria existe nos ingredientes do hambúrguer.
+                    if (allBurgerIngredients[categoryName]) {
+                        categoryDiv.querySelectorAll('input:checked').forEach(input => {
+                            const ingredient = allBurgerIngredients[categoryName].find(ing => ing.id === input.value);
                             if (ingredient) {
-                                selectedIngredients.push({ name: `${ingredient.name} (x${quantity})`, category: ingredient.category });
-                                finalTotal += quantity * ingredient.price;
+                                selectedIngredients.push({ name: ingredient.name, category: ingredient.category });
+                                finalTotal += ingredient.price;
                             }
-                        }
-                    });
+                        });
+                        categoryDiv.querySelectorAll('.quantity-display').forEach(display => {
+                            const quantity = parseInt(display.textContent);
+                            if (quantity > 0) {
+                                const container = display.closest('[data-ingredient-id]');
+                                const ingredientId = container.dataset.ingredientId;
+                                const ingredient = allBurgerIngredients[categoryName].find(ing => ing.id === ingredientId);
+                                if (ingredient) {
+                                    selectedIngredients.push({ name: `${ingredient.name} (x${quantity})`, category: ingredient.category });
+                                    finalTotal += quantity * ingredient.price;
+                                }
+                            }
+                        });
+                    }
                 });
 
                 addToOrder({
@@ -3338,4 +3342,3 @@
     </script>
 </body>
 </html>
-
