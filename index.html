@@ -2025,7 +2025,12 @@
                             if (item.extras && item.extras.length > 0) {
                                 detailsHtml += '<ul class="text-xs text-gray-500 mt-1 pl-4 list-disc list-inside">';
                                 item.extras.forEach(extra => {
-                                    detailsHtml += `<li>${extra.name} (${extra.placement}) +R$ ${extra.price.toFixed(2).replace('.',',')}</li>`;
+                                    let extraText = `${extra.name} (${extra.placement})`;
+                                    if(extra.quantity > 1) {
+                                        extraText += ` (x${extra.quantity})`;
+                                    }
+                                    extraText += ` +R$ ${(extra.price * extra.quantity).toFixed(2).replace('.',',')}`;
+                                    detailsHtml += `<li>${extraText}</li>`;
                                 });
                                 detailsHtml += '</ul>';
                             }
@@ -2128,6 +2133,8 @@
             
             function clearOrder() {
                 order = [];
+                selectedPaymentMethod = null;
+                document.getElementById('order-observation').value = '';
                 updateOrderDisplay();
                 updateCartCount();
                 firstHalfPizza = null;
