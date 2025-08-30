@@ -2030,7 +2030,8 @@
                                 detailsHtml += '<ul class="text-xs text-gray-500 mt-1 pl-4 list-disc list-inside">';
                                 item.ingredients.forEach(ingredient => {
                                     const quantityText = ingredient.quantity > 1 ? ` (x${ingredient.quantity})` : '';
-                                    detailsHtml += `<li>${ingredient.name}${quantityText}</li>`;
+                                    const priceText = ingredient.price > 0 ? ` +R$ ${(ingredient.price * ingredient.quantity).toFixed(2).replace('.',',')}` : '';
+                                    detailsHtml += `<li>${ingredient.name}${quantityText}${priceText}</li>`;
                                 });
                                 detailsHtml += '</ul>';
                             }
@@ -3467,4 +3468,3 @@
     </script>
 </body>
 </html>
-
