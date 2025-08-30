@@ -1041,6 +1041,7 @@
             const pizzaExtrasTotalPrice = document.getElementById('pizza-extras-total-price');
             const addPizzaWithExtrasBtn = document.getElementById('add-pizza-with-extras-btn');
 
+
             let currentPizzaData = {};
             let firstHalfPizza = null;
             let isSelectingSecondHalf = false;
@@ -1151,7 +1152,7 @@
                 burgerBuilderModal.style.display = 'none';
                 updatePromotionButtonVisibility();
             }
-
+            
             function formatPizzaCategory(category) {
                 if (!category) return 'PIZZAS';
                 const upperCategory = category.toUpperCase();
@@ -1567,62 +1568,6 @@
                     }
                 });
                 burgerTotalPriceEl.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
-            }
-
-            function addCustomBurgerToOrder(baseBurgerItem) {
-                const selectedIngredients = [];
-                let finalTotal = currentBurgerBasePrice;
-
-                let allRequiredCategoriesFilled = true;
-                for (const categoryName in allBurgerIngredients) {
-                    const isRequired = allBurgerIngredients[categoryName][0]?.isRequired || false;
-                    if (isRequired) {
-                        const categoryDiv = burgerBuilderModal.querySelector(`.ingredient-category[data-category-name="${categoryName}"]`);
-                        if(categoryDiv){
-                            const checkedInput = categoryDiv.querySelector('input:checked');
-                            let quantityCount = 0;
-                            categoryDiv.querySelectorAll('.quantity-display').forEach(d => quantityCount += parseInt(d.textContent));
-                            if (!checkedInput && quantityCount === 0) {
-                                showMessageModal(`Por favor, escolha uma opção na categoria "${capitalizeFirstLetter(categoryName)}".`);
-                                allRequiredCategoriesFilled = false;
-                                break;
-                            }
-                        }
-                    }
-                }
-                if (!allRequiredCategoriesFilled) return;
-
-                burgerBuilderModal.querySelectorAll('.ingredient-category').forEach(categoryDiv => {
-                    const categoryName = categoryDiv.dataset.categoryName;
-                    categoryDiv.querySelectorAll('input:checked').forEach(input => {
-                        const ingredient = allBurgerIngredients[categoryName].find(ing => ing.id === input.value);
-                        if (ingredient) {
-                            selectedIngredients.push({ name: ingredient.name, category: ingredient.category });
-                            finalTotal += ingredient.price;
-                        }
-                    });
-                    categoryDiv.querySelectorAll('.quantity-display').forEach(display => {
-                        const quantity = parseInt(display.textContent);
-                        if (quantity > 0) {
-                            const container = display.closest('[data-ingredient-id]');
-                            const ingredientId = container.dataset.ingredientId;
-                            const ingredient = allBurgerIngredients[categoryName].find(ing => ing.id === ingredientId);
-                            if (ingredient) {
-                                selectedIngredients.push({ name: `${ingredient.name} (x${quantity})`, category: ingredient.category });
-                                finalTotal += quantity * ingredient.price;
-                            }
-                        }
-                    });
-                });
-
-                addToOrder({
-                    type: 'custom_burger', name: 'Hambúrguer Personalizado', price: finalTotal,
-                    description: `Monte seu hambúrguer.`, ingredients: selectedIngredients, category: baseBurgerItem.category,
-                    acceptsExtras: false
-                }, addCustomBurgerBtn);
-
-                burgerBuilderModal.style.display = 'none';
-                updatePromotionButtonVisibility();
             }
             
             function createCategoryButtons(categories) {
