@@ -93,24 +93,38 @@ export default async (req, res) => {
             itemsText += `\n*> ${category.toUpperCase()} <*\n`;
             const items = itemsByCategory[category];
             items.forEach((item, itemIndex) => {
-                let itemBasePrice = item.price;
-                if (item.extras && item.extras.length > 0) {
-                    item.extras.forEach(extra => {
-                        itemBasePrice -= extra.price;
-                    });
-                }
-                
-                let itemName = item.name.includes(':') ? item.name.split(': ')[1] : item.name;
-                let itemSize = item.name.includes(':') ? `*${item.name.split(': ')[0]}:* ` : '';
+                 if (item.type === 'custom_burger') {
+                    itemsText += `  • ${item.name}: R$ ${item.basePrice.toFixed(2).replace('.', ',')}\n`;
+                    if (item.ingredients && item.ingredients.length > 0) {
+                        const ingredientsString = item.ingredients.map(ing => {
+                            const quantityText = ing.quantity > 1 ? ` (x${ing.quantity})` : '';
+                            const priceText = ing.price > 0 ? `: R$ ${(ing.price * ing.quantity).toFixed(2).replace('.', ',')}` : '';
+                            return `     + _${ing.name}${quantityText}${priceText}_`;
+                        }).join('\n');
+                        itemsText += `${ingredientsString}\n`;
+                    }
+                    itemsText += `        *Total C/ Ingredientes: R$ ${item.price.toFixed(2).replace('.', ',')}*\n`;
+                } else {
+                    let itemBasePrice = item.price;
+                    if (item.extras && item.extras.length > 0) {
+                        item.extras.forEach(extra => {
+                           itemBasePrice -= (extra.price * extra.quantity);
+                        });
+                    }
+                    
+                    let itemName = item.name.includes(':') ? item.name.split(': ')[1] : item.name;
+                    let itemSize = item.name.includes(':') ? `*${item.name.split(': ')[0]}:* ` : '';
 
-                itemsText += `  • ${itemSize}${itemName}: R$ ${itemBasePrice.toFixed(2).replace('.', ',')}\n`;
-                
-                if (item.extras && item.extras.length > 0) {
-                    const extrasString = item.extras.map(extra => 
-                        `     + _${extra.name} (${extra.placement}): R$ ${extra.price.toFixed(2).replace('.', ',')}_`
-                    ).join('\n');
-                    itemsText += `${extrasString}\n`;
-                    itemsText += `        *Total C/ Adicionais: R$ ${item.price.toFixed(2).replace('.', ',')}*\n`;
+                    itemsText += `  • ${itemSize}${itemName}: R$ ${itemBasePrice.toFixed(2).replace('.', ',')}\n`;
+                    
+                    if (item.extras && item.extras.length > 0) {
+                        const extrasString = item.extras.map(extra => {
+                            const quantityText = extra.quantity > 1 ? ` (x${extra.quantity})` : '';
+                            return `     + _${extra.name} (${extra.placement})${quantityText}: R$ ${(extra.price * extra.quantity).toFixed(2).replace('.', ',')}_`;
+                        }).join('\n');
+                        itemsText += `${extrasString}\n`;
+                        itemsText += `        *Total C/ Adicionais: R$ ${item.price.toFixed(2).replace('.', ',')}*\n`;
+                    }
                 }
 
                 if (itemIndex < items.length - 1) {
@@ -168,4 +182,3 @@ ${observationText}
         res.status(500).json({ error: 'Erro interno no servidor.' });
     }
 };
-
