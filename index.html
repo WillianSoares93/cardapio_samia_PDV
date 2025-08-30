@@ -1969,11 +1969,10 @@
             
             function updateOrderDisplay() {
                 let subtotal = 0;
-
                 order.forEach((item) => {
                     subtotal += item.price;
                 });
-                
+
                 let finalDiscountAmount = 0;
                 if (discountPromotion) {
                     finalDiscountAmount = subtotal * (discountPromotion.promoPrice / 100);
@@ -1983,84 +1982,91 @@
                     emptyOrderMessage.classList.remove('hidden');
                     orderItemsContainer.innerHTML = '';
                     orderItemsContainer.appendChild(emptyOrderMessage);
-                    subtotalEl.textContent = 'R$ 0,00';
-                    selectedPaymentMethod = null;
-                    discountSection.classList.add('hidden');
                 } else {
                     emptyOrderMessage.classList.add('hidden');
                     
-                    let itemsHTML = '';
+                    const itemsByCategory = {};
                     order.forEach((item, index) => {
-                        let itemName = item.name;
-                        let itemDescription = '';
-                        let priceHtml = `<span class="font-bold mr-4">R$ ${item.price.toFixed(2).replace('.', ',')}</span>`;
-
-                        if (item.type === 'promotion') {
-                            itemName = `<i class="fas fa-tags text-red-600 mr-2"></i> ${item.name}`;
-                        } else if (item.type === 'discount') {
-                            return;
+                        const category = item.category || 'Outros';
+                        if (!itemsByCategory[category]) {
+                            itemsByCategory[category] = [];
                         }
+                        itemsByCategory[category].push({ ...item, originalIndex: index });
+                    });
+
+                    let itemsHTML = '';
+                    const categoryOrder = Object.keys(itemsByCategory);
+
+                    categoryOrder.forEach(category => {
+                        itemsHTML += `<h4 class="font-bold text-gray-700 mt-4 mb-2 border-b pb-1">${category.toUpperCase()}</h4>`;
                         
-                        const isLastItem = (index === order.length - 1);
-                        const borderClass = isLastItem && !selectedPaymentMethod && !selectedAddress.bairro && !selectedAddress.clientName ? '' : 'border-b border-gray-100';
+                        itemsByCategory[category].forEach(itemObj => {
+                            const { item, originalIndex } = itemObj;
+                            let itemName = item.name;
+                            let priceHtml = `<span class="font-bold mr-4">R$ ${item.price.toFixed(2).replace('.', ',')}</span>`;
 
-                        let ingredientsHtml = '';
-                        if (item.type === 'custom_burger' && item.ingredients && item.ingredients.length > 0) {
-                            itemName = `<i class="fas fa-hamburger text-red-600 mr-2"></i> ${item.name}`;
-                            ingredientsHtml += '<ul class="text-xs text-gray-500 mt-1 pl-4 list-disc list-inside">';
-                            item.ingredients.forEach(ingredient => {
-                                ingredientsHtml += `<li>${ingredient.name}</li>`;
-                            });
-                            ingredientsHtml += '</ul>';
-                        }
+                            if (item.type === 'promotion') {
+                                itemName = `<i class="fas fa-tags text-red-600 mr-2"></i> ${item.name}`;
+                            } else if (item.type === 'discount') {
+                                return; // Skip rendering
+                            }
 
-                        let extrasHtml = '';
-                        if (item.extras && item.extras.length > 0) {
-                            extrasHtml += '<ul class="text-xs text-gray-500 mt-1 pl-4 list-disc list-inside">';
-                            item.extras.forEach(extra => {
-                                extrasHtml += `<li>${extra.name} (${extra.placement}) +R$ ${extra.price.toFixed(2).replace('.',',')}</li>`;
-                            });
-                             extrasHtml += '</ul>';
-                        }
-                        
-                        let actionButtonHtml = '';
-                        if (item.acceptsExtras && (item.type === 'full' || item.type === 'split')) {
-                            const buttonText = (item.extras && item.extras.length > 0) ? 'Editar Adicionais' : 'Incluir Adicionais';
-                            actionButtonHtml = `<button class="edit-extras-btn text-xs text-blue-600 hover:underline" data-order-index="${index}">${buttonText}</button>`;
-                        } else if (item.type === 'custom_burger') {
-                            actionButtonHtml = `<button class="edit-burger-btn text-xs text-blue-600 hover:underline" data-order-index="${index}">Editar Hambúrguer</button>`;
-                        }
+                            let detailsHtml = '';
+                            if (item.type === 'custom_burger' && item.ingredients && item.ingredients.length > 0) {
+                                itemName = `<i class="fas fa-hamburger text-red-600 mr-2"></i> ${item.name}`;
+                                detailsHtml += '<ul class="text-xs text-gray-500 mt-1 pl-4 list-disc list-inside">';
+                                item.ingredients.forEach(ingredient => {
+                                    detailsHtml += `<li>${ingredient.name}</li>`;
+                                });
+                                detailsHtml += '</ul>';
+                            }
 
-                        itemsHTML += `
-                            <div class="py-3 ${borderClass}">
-                                <div class="flex justify-between items-start">
-                                    <div class="flex-1">
-                                        <p class="font-medium">${itemName}</p>
-                                        <div class="text-sm text-gray-500">${itemDescription}</div>
-                                        ${ingredientsHtml}
-                                        ${extrasHtml}
+                            if (item.extras && item.extras.length > 0) {
+                                detailsHtml += '<ul class="text-xs text-gray-500 mt-1 pl-4 list-disc list-inside">';
+                                item.extras.forEach(extra => {
+                                    detailsHtml += `<li>${extra.name} (${extra.placement}) +R$ ${extra.price.toFixed(2).replace('.',',')}</li>`;
+                                });
+                                detailsHtml += '</ul>';
+                            }
+                            
+                            let actionButtonHtml = '';
+                            if (item.acceptsExtras && (item.type === 'full' || item.type === 'split')) {
+                                const buttonText = (item.extras && item.extras.length > 0) ? 'Editar Adicionais' : 'Incluir Adicionais';
+                                actionButtonHtml = `<button class="edit-extras-btn text-xs text-blue-600 hover:underline" data-order-index="${originalIndex}">${buttonText}</button>`;
+                            } else if (item.type === 'custom_burger') {
+                                actionButtonHtml = `<button class="edit-burger-btn text-xs text-blue-600 hover:underline" data-order-index="${originalIndex}">Editar Hambúrguer</button>`;
+                            }
+
+                            itemsHTML += `
+                                <div class="py-3 border-b border-gray-100">
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex-1">
+                                            <p class="font-medium">${itemName}</p>
+                                            ${detailsHtml}
+                                        </div>
+                                        <div class="flex items-center">
+                                            ${priceHtml}
+                                            <button data-index="${originalIndex}" class="remove-item-btn text-red-500 hover:text-red-700">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div class="flex items-center">
-                                        ${priceHtml}
-                                        <button data-index="${index}" class="remove-item-btn text-red-500 hover:text-red-700">
-                                            <i class="fas fa-trash-alt"></i>
-                                        </button>
-                                    </div>
+                                    ${actionButtonHtml}
                                 </div>
-                                ${actionButtonHtml}
-                            </div>
-                        `;
+                            `;
+                        });
                     });
                     orderItemsContainer.innerHTML = itemsHTML;
-                    subtotalEl.textContent = 'R$ ' + subtotal.toFixed(2).replace('.', ',')
-                    
-                    if (discountPromotion && subtotal > 0) {
-                        discountSection.classList.remove('hidden');
-                        discountPercentageDisplay.textContent = `${discountPromotion.promoPrice}%`;
-                        discountValueDisplay.textContent = `- R$ ${finalDiscountAmount.toFixed(2).replace('.', ',')}`;
-                    } else {
-                        discountSection.classList.add('hidden');
-                    }
+                }
+                
+                subtotalEl.textContent = 'R$ ' + subtotal.toFixed(2).replace('.', ',');
+                
+                if (discountPromotion && subtotal > 0) {
+                    discountSection.classList.remove('hidden');
+                    discountPercentageDisplay.textContent = `${discountPromotion.promoPrice}%`;
+                    discountValueDisplay.textContent = `- R$ ${finalDiscountAmount.toFixed(2).replace('.', ',')}`;
+                } else {
+                    discountSection.classList.add('hidden');
                 }
                 
                 if (isPickupOrder) {
@@ -2089,28 +2095,13 @@
                 if (selectedPaymentMethod) {
                     let paymentMethodText = '';
                     let trocoInfo = '';
-
                     if (typeof selectedPaymentMethod === 'object' && selectedPaymentMethod.method === 'Dinheiro') {
                         paymentMethodText = selectedPaymentMethod.method;
-                        trocoInfo = `
-                            <p class="text-sm text-gray-500 mt-1">Troco para: R$ ${selectedPaymentMethod.trocoPara.toFixed(2).replace('.', ',')}</p>
-                            <p class="text-sm text-gray-500">Troco: <span class="font-bold text-green-600">R$ ${selectedPaymentMethod.trocoTotal.toFixed(2).replace('.', ',')}</span></p>
-                        `;
+                        trocoInfo = `<p class="text-sm text-gray-500 mt-1">Troco para: R$ ${selectedPaymentMethod.trocoPara.toFixed(2).replace('.', ',')}</p><p class="text-sm text-gray-500">Troco: <span class="font-bold text-green-600">R$ ${selectedPaymentMethod.trocoTotal.toFixed(2).replace('.', ',')}</span></p>`;
                     } else {
                         paymentMethodText = selectedPaymentMethod;
                     }
-
-                    orderItemsContainer.insertAdjacentHTML('beforeend', `
-                        <div class="flex justify-between items-start py-3">
-                            <div class="flex-1">
-                                <p class="font-medium text-gray-600">Forma de Pagamento:</p>
-                                ${trocoInfo}
-                            </div>
-                            <div class="flex items-center">
-                                <span class="font-bold text-red-600">${paymentMethodText}</span>
-                            </div>
-                        </div>
-                    `);
+                    orderItemsContainer.insertAdjacentHTML('beforeend', `<div class="flex justify-between items-start py-3"><div class="flex-1"><p class="font-medium text-gray-600">Forma de Pagamento:</p>${trocoInfo}</div><div class="flex items-center"><span class="font-bold text-red-600">${paymentMethodText}</span></div></div>`);
                 }
                 
                 updateDrinkSuggestionButtons();
