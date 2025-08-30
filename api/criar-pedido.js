@@ -34,8 +34,7 @@ export default async (req, res) => {
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
     }
-
-    // Apenas permite requisições POST
+    
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method Not Allowed' });
     }
@@ -76,8 +75,9 @@ export default async (req, res) => {
             pdvError = String(firestoreError && firestoreError.message ? firestoreError.message : firestoreError);
             // Continua o fluxo para enviar ao WhatsApp mesmo assim
         }
-        
-        // Monta a mensagem para o WhatsApp com agrupamento por categoria
+
+
+        // Monta a mensagem para o WhatsApp agrupando por categoria
         const itemsByCategory = order.reduce((acc, item) => {
             const category = item.category || 'Outros';
             if (!acc[category]) {
@@ -88,25 +88,44 @@ export default async (req, res) => {
         }, {});
 
         let itemsText = '';
-        for (const category in itemsByCategory) {
-            itemsText += `\n*${category.toUpperCase()}*\n`;
-            itemsText += itemsByCategory[category].map(item => {
-                 let itemString = `  - ${item.name}`;
-                 if (item.extras && item.extras.length > 0) {
-                    const extrasString = item.extras.map(extra => `    + _${extra.name} (${extra.placement})_`).join('\n');
-                    itemString += `\n${extrasString}`;
+        const categoryKeys = Object.keys(itemsByCategory);
+        categoryKeys.forEach((category, catIndex) => {
+            itemsText += `\n*> ${category.toUpperCase()} <*\n`;
+            const items = itemsByCategory[category];
+            items.forEach((item, itemIndex) => {
+                let itemBasePrice = item.price;
+                if (item.extras && item.extras.length > 0) {
+                    item.extras.forEach(extra => {
+                        itemBasePrice -= extra.price;
+                    });
                 }
-                return itemString;
-            }).join('\n');
-            itemsText += '\n';
-        }
+                
+                let itemName = item.name.includes(':') ? item.name.split(': ')[1] : item.name;
+                let itemSize = item.name.includes(':') ? `*${item.name.split(': ')[0]}:* ` : '';
 
+                itemsText += `  • ${itemSize}${itemName}: R$ ${itemBasePrice.toFixed(2).replace('.', ',')}\n`;
+                
+                if (item.extras && item.extras.length > 0) {
+                    const extrasString = item.extras.map(extra => 
+                        `     + _${extra.name} (${extra.placement}): R$ ${extra.price.toFixed(2).replace('.', ',')}_`
+                    ).join('\n');
+                    itemsText += `${extrasString}\n`;
+                    itemsText += `        *Total C/ Adicionais: R$ ${item.price.toFixed(2).replace('.', ',')}*\n`;
+                }
 
-        let paymentText = `Pagamento: ${paymentMethod}`;
+                if (itemIndex < items.length - 1) {
+                    itemsText += '------------------------------------\n';
+                }
+            });
+        });
+
+        let paymentText = '';
         if (typeof paymentMethod === 'object' && paymentMethod.method === 'Dinheiro') {
-            paymentText = `Pagamento: Dinheiro\nTroco para: R$ ${paymentMethod.trocoPara.toFixed(2).replace('.', ',')}`;
+            paymentText = `Pagamento: *Dinheiro*\nTroco para: *R$ ${paymentMethod.trocoPara.toFixed(2).replace('.', ',')}*\nTroco: *R$ ${paymentMethod.trocoTotal.toFixed(2).replace('.', ',')}*`;
+        } else {
+            paymentText = `Pagamento: *${paymentMethod}*`;
         }
-
+		
         let discountText = '';
         if (total.discount && total.discount > 0) {
             discountText = `Desconto: - R$ ${total.discount.toFixed(2).replace('.', ',')}\n`;
@@ -114,16 +133,21 @@ export default async (req, res) => {
         
         let observationText = '';
         if (observation && observation.trim() !== '') {
-            observationText = `\n*OBSERVAÇÕES:*\n_${observation.trim()}_\n`;
+            observationText = `\n*OBSERVAÇÕES:*\n_${observation.trim()}_`;
         }
+        
+        const addressText = selectedAddress.rua === "Retirada no Balcão" 
+            ? `${selectedAddress.rua}, S/N - Retirada`
+            : `${selectedAddress.rua}, ${selectedAddress.numero} - ${selectedAddress.bairro}`;
 
         const fullMessage = `
-*-- NOVO PEDIDO --*
+-- *NOVO PEDIDO* --
 
 *Cliente:* ${selectedAddress.clientName}
-*Endereço:* ${selectedAddress.rua}, ${selectedAddress.numero} - ${selectedAddress.bairro}
+*Endereço:* ${addressText}
 ${selectedAddress.referencia ? `*Referência:* ${selectedAddress.referencia}` : ''}
-------------------------------------
+
+*------------------------------------*
 *PEDIDO:*
 ${itemsText}
 ------------------------------------
@@ -132,16 +156,16 @@ ${discountText}Taxa de Entrega: R$ ${total.deliveryFee.toFixed(2).replace('.', '
 *Total: R$ ${total.finalTotal.toFixed(2).replace('.', ',')}*
 ${paymentText}
 ${observationText}
-        `;
+        `.trim();
         
         const targetNumber = `55${whatsappNumber.replace(/\D/g, '')}`;
-        const whatsappUrl = `https://wa.me/${targetNumber}?text=${encodeURIComponent(fullMessage.trim())}`;
+        const whatsappUrl = `https://wa.me/${targetNumber}?text=${encodeURIComponent(fullMessage)}`;
 
-        res.status(200).json({ whatsappUrl, pdvSaved, pdvError });
+        res.status(200).json({ success: true, whatsappUrl, pdvSaved, pdvError });
 
     } catch (error) {
-        console.error("Erro na função criar-pedido:", error);
-        res.status(500).json({ error: 'Erro interno no servidor' });
+        console.error('Erro ao processar pedido:', error);
+        res.status(500).json({ error: 'Erro interno no servidor.' });
     }
 };
 
