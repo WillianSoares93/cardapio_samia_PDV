@@ -902,6 +902,7 @@
         import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
         document.addEventListener('DOMContentLoaded', function() {
+            // --- INÍCIO DO CÓDIGO JS COMPLETO ---
             const firebaseConfig = {
                 apiKey: "AIzaSyB9LJ-7bOvHGYyFE_H2Qd7XFcyjmSPq_ro",
                 authDomain: "samia-cardapio.firebaseapp.com",
@@ -913,8 +914,7 @@
 
             const app = initializeApp(firebaseConfig);
             const db = getFirestore(app);
-
-            // AQUI COMEÇA O CÓDIGO JS COMPLETO
+            
             let order = [];
             let allMenuData = [];
             let allPromotionsData = [];
@@ -1041,7 +1041,6 @@
             const pizzaExtrasTotalPrice = document.getElementById('pizza-extras-total-price');
             const addPizzaWithExtrasBtn = document.getElementById('add-pizza-with-extras-btn');
 
-
             let currentPizzaData = {};
             let firstHalfPizza = null;
             let isSelectingSecondHalf = false;
@@ -1056,6 +1055,8 @@
                 { slices: 8, label: '8 Fatias', priceKey: 'basePrice' },
                 { slices: 10, label: '10 Fatias', priceKey: 'price10Slices' }
             ];
+
+            // --- FUNÇÕES ---
             
             function formatProductName(name, category) {
                 if (!category) return name;
@@ -1103,7 +1104,7 @@
                 for (const categoryName in allBurgerIngredients) {
                     const isRequired = allBurgerIngredients[categoryName][0]?.isRequired || false;
                     if (isRequired) {
-                        const categoryDiv = document.querySelector(`#burger-builder-modal .ingredient-category[data-category-name="${categoryName}"]`);
+                        const categoryDiv = burgerBuilderModal.querySelector(`.ingredient-category[data-category-name="${categoryName}"]`);
                         if(categoryDiv){
                             const checkedInput = categoryDiv.querySelector('input:checked');
                             let quantityCount = 0;
@@ -1118,7 +1119,7 @@
                 }
                 if (!allRequiredCategoriesFilled) return;
 
-                document.querySelectorAll('#burger-builder-modal .ingredient-category').forEach(categoryDiv => {
+                burgerBuilderModal.querySelectorAll('.ingredient-category').forEach(categoryDiv => {
                     const categoryName = categoryDiv.dataset.categoryName;
                     categoryDiv.querySelectorAll('input:checked').forEach(input => {
                         const ingredient = allBurgerIngredients[categoryName].find(ing => ing.id === input.value);
@@ -1439,6 +1440,15 @@
                         acc[current.category].push(current);
                         return acc;
                     }, {});
+                    
+                    const rawPizzaIngredients = data.ingredientesPizza || [];
+                     allPizzaIngredients = rawPizzaIngredients.reduce((acc, current) => {
+                        const category = current.category || 'Adicionais';
+                        if (!acc[category]) acc[category] = [];
+                        acc[category].push(current);
+                        return acc;
+                    }, {});
+
 
                     contactInfo = data.contact.reduce((acc, curr) => {
                         if (curr.data && curr.value) acc[curr.data.toLowerCase().replace(/[^a-z0-9]/g, '')] = curr.value;
@@ -1568,7 +1578,7 @@
                     const isRequired = allBurgerIngredients[categoryName][0]?.isRequired || false;
                     if (isRequired) {
                         const categoryDiv = burgerBuilderModal.querySelector(`.ingredient-category[data-category-name="${categoryName}"]`);
-                        if (categoryDiv) {
+                        if(categoryDiv){
                             const checkedInput = categoryDiv.querySelector('input:checked');
                             let quantityCount = 0;
                             categoryDiv.querySelectorAll('.quantity-display').forEach(d => quantityCount += parseInt(d.textContent));
@@ -1614,12 +1624,7 @@
                 burgerBuilderModal.style.display = 'none';
                 updatePromotionButtonVisibility();
             }
-
-            function capitalizeFirstLetter(string) {
-                if (!string) return '';
-                return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
-            }
-
+            
             function createCategoryButtons(categories) {
                 const categoryButtonsContainer = document.getElementById('category-buttons-container');
                 categoryButtonsContainer.innerHTML = ''; 
@@ -2871,49 +2876,6 @@
                 }
             }
 
-            function handleExtraSelectionChange(checkbox, orderIndex, ingredient) {
-                const activeScopeButton = document.querySelector('#pizza-extras-scope-buttons .active');
-                const activeScope = activeScopeButton ? activeScopeButton.dataset.scope : 'toda';
-                
-                let placementText = 'Toda';
-                if (activeScope === 'metade1') placementText = '1ª Metade';
-                if (activeScope === 'metade2') placementText = '2ª Metade';
-
-                if (checkbox.checked) {
-                    if (!currentPizzaExtrasState[activeScope].some(extra => extra.name === ingredient.name)) {
-                        currentPizzaExtrasState[activeScope].push({
-                            name: ingredient.name,
-                            price: ingredient.price,
-                            placement: placementText
-                        });
-                    }
-                } else {
-                    currentPizzaExtrasState[activeScope] = currentPizzaExtrasState[activeScope].filter(extra => extra.name !== ingredient.name);
-                }
-                
-                updatePizzaExtrasPrice(orderIndex);
-            }
-
-            function updatePizzaExtrasPrice(orderIndex) {
-                const pizzaItem = order[orderIndex];
-                
-                let basePrice = pizzaItem.price;
-                if (pizzaItem.extras && pizzaItem.extras.length > 0) {
-                    pizzaItem.extras.forEach(extra => {
-                        basePrice -= extra.price;
-                    });
-                }
-
-                let totalExtrasPrice = 0;
-                for (const scope in currentPizzaExtrasState) {
-                    currentPizzaExtrasState[scope].forEach(extra => {
-                        totalExtrasPrice += extra.price;
-                    });
-                }
-
-                pizzaExtrasTotalPrice.textContent = `R$ ${(basePrice + totalExtrasPrice).toFixed(2).replace('.', ',')}`;
-            }
-
             function confirmPizzaExtras() {
                 const orderIndex = parseInt(pizzaExtrasBuilderModal.dataset.orderIndex);
                 if (isNaN(orderIndex)) return;
@@ -3405,7 +3367,6 @@
                     updatePromotionButtonVisibility();
                 }
             });
-
         });
     </script>
 </body>
