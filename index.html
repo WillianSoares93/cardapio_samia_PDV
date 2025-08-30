@@ -1538,7 +1538,11 @@
                         categoryDiv.querySelectorAll('input:checked').forEach(input => {
                             const ingredient = allBurgerIngredients[categoryName].find(ing => ing.id === input.value);
                             if (ingredient) {
-                                selectedIngredients.push({ name: ingredient.name, category: ingredient.category });
+                                selectedIngredients.push({
+                                    name: ingredient.name,
+                                    price: ingredient.price,
+                                    quantity: 1
+                                });
                                 finalTotal += ingredient.price;
                             }
                         });
@@ -1549,7 +1553,11 @@
                                 const ingredientId = container.dataset.ingredientId;
                                 const ingredient = allBurgerIngredients[categoryName].find(ing => ing.id === ingredientId);
                                 if (ingredient) {
-                                    selectedIngredients.push({ name: `${ingredient.name} (x${quantity})`, category: ingredient.category });
+                                     selectedIngredients.push({
+                                        name: ingredient.name,
+                                        price: ingredient.price,
+                                        quantity: quantity
+                                    });
                                     finalTotal += quantity * ingredient.price;
                                 }
                             }
@@ -1559,8 +1567,13 @@
 
                 const newBurger = {
                     id: editIndex !== null ? order[editIndex].id : Date.now() + Math.random(),
-                    type: 'custom_burger', name: 'Hambúrguer Personalizado', price: finalTotal,
-                    description: `Monte seu hambúrguer.`, ingredients: selectedIngredients, category: baseBurgerItem.category,
+                    type: 'custom_burger',
+                    name: 'Hambúrguer Personalizado',
+                    price: finalTotal,
+                    basePrice: baseBurgerItem.basePrice,
+                    description: `Monte seu hambúrguer.`,
+                    ingredients: selectedIngredients,
+                    category: baseBurgerItem.category,
                     originalItem: baseBurgerItem
                 };
                 
