@@ -1029,7 +1029,6 @@
             const socialLinksContainer = document.getElementById('social-links-container');
             const pickupCheckbox = document.getElementById('pickupCheckbox');
             const addressFieldsContainer = document.getElementById('address-fields-container');
-
             const askPizzaExtrasModal = document.getElementById('ask-pizza-extras-modal');
             const askExtrasTitle = document.getElementById('ask-extras-title');
             const askExtrasYesBtn = document.getElementById('ask-extras-yes-btn');
@@ -1040,7 +1039,6 @@
             const pizzaExtrasIngredientsContainer = document.getElementById('pizza-extras-ingredients-container');
             const pizzaExtrasTotalPrice = document.getElementById('pizza-extras-total-price');
             const addPizzaWithExtrasBtn = document.getElementById('add-pizza-with-extras-btn');
-
 
             let currentPizzaData = {};
             let firstHalfPizza = null;
@@ -2731,131 +2729,6 @@
                 return gerarPayload(pixKey, amount, merchantName, merchantCity, txid);
             }
             
-            function showAskForExtrasModal(orderItemId, item) {
-                const formattedName = formatProductName(item.name.split(': ')[1] || item.name, item.category);
-                askExtrasTitle.textContent = `Turbine a(o) ${formattedName} adicionando mais ingredientes!`;
-                askPizzaExtrasModal.dataset.orderItemId = orderItemId;
-                askPizzaExtrasModal.style.display = 'flex';
-            }
-            
-            function openPizzaExtrasBuilderModal(orderIndex) {
-                const pizzaItem = order[orderIndex];
-                if (!pizzaItem) return;
-
-                const formattedName = formatProductName(pizzaItem.name, pizzaItem.category);
-                pizzaExtrasBuilderTitle.textContent = `Adicionais para ${formattedName}`;
-                pizzaExtrasBuilderModal.dataset.orderIndex = orderIndex;
-
-                const scopeButtonsContainer = document.getElementById('pizza-extras-scope-buttons');
-                scopeButtonsContainer.innerHTML = '';
-
-                currentPizzaExtrasState = { metade1: [], metade2: [], toda: [] };
-                if (pizzaItem.extras && pizzaItem.extras.length > 0) {
-                    pizzaItem.extras.forEach(extra => {
-                        let placement = 'toda';
-                        if (extra.placement.includes('1ª Metade')) {
-                            placement = 'metade1';
-                        } else if (extra.placement.includes('2ª Metade')) {
-                            placement = 'metade2';
-                        }
-                        
-                        if (currentPizzaExtrasState[placement]) {
-                            currentPizzaExtrasState[placement].push(extra);
-                        }
-                    });
-                }
-                
-                if (pizzaItem.type === 'split') {
-                    const half1Name = pizzaItem.name.split(' Meia ')[1].split(' & ')[0];
-                    const half2Name = pizzaItem.name.split(' & Meia ')[1];
-                    
-                    scopeButtonsContainer.innerHTML = `
-                        <button class="scope-button px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm" data-scope="metade1">1ª Metade: ${half1Name}</button>
-                        <button class="scope-button px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm" data-scope="metade2">2ª Metade: ${half2Name}</button>
-                        <button class="scope-button px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm active" data-scope="toda">Pizza Toda</button>
-                    `;
-                    
-                    scopeButtonsContainer.querySelectorAll('.scope-button').forEach(btn => {
-                        btn.addEventListener('click', () => {
-                            scopeButtonsContainer.querySelector('.active').classList.remove('active');
-                            btn.classList.add('active');
-                            renderPizzaExtrasList(orderIndex);
-                        });
-                    });
-                }
-                
-                renderPizzaExtrasList(orderIndex);
-                updatePizzaExtrasPrice(orderIndex);
-                pizzaExtrasBuilderModal.style.display = 'flex';
-            }
-
-            function renderPizzaExtrasList(orderIndex) {
-                const activeScopeButton = document.querySelector('#pizza-extras-scope-buttons .active');
-                const activeScope = activeScopeButton ? activeScopeButton.dataset.scope : 'toda';
-                pizzaExtrasIngredientsContainer.innerHTML = '';
-
-                for (const categoryName in allPizzaIngredients) {
-                    const ingredients = allPizzaIngredients[categoryName];
-                    const categoryDiv = document.createElement('div');
-                    categoryDiv.className = 'ingredient-category';
-                    categoryDiv.innerHTML = `<h4>${capitalizeFirstLetter(categoryName)}</h4>`;
-
-                    ingredients.forEach(ingredient => {
-                        const priceDisplay = ingredient.price > 0 ? `+ R$ ${ingredient.price.toFixed(2).replace('.', ',')}` : '';
-                        const optionDiv = document.createElement('div');
-                        optionDiv.className = 'ingredient-option';
-                        const isChecked = currentPizzaExtrasState[activeScope]?.some(extra => extra.name === ingredient.name);
-                        
-                        optionDiv.innerHTML = `
-                            <label class="flex items-center w-full cursor-pointer">
-                                <input type="checkbox" data-name="${ingredient.name}" data-price="${ingredient.price}" class="form-checkbox" ${isChecked ? 'checked' : ''}>
-                                <span class="ml-2 flex-grow">${ingredient.name}</span>
-                                <span class="price">${priceDisplay}</span>
-                            </label>
-                        `;
-
-                        optionDiv.querySelector('input').addEventListener('change', (e) => handleExtraSelectionChange(e.target, orderIndex, ingredient));
-                        categoryDiv.appendChild(optionDiv);
-                    });
-                    pizzaExtrasIngredientsContainer.appendChild(categoryDiv);
-                }
-            }
-
-            function confirmPizzaExtras() {
-                const orderIndex = parseInt(pizzaExtrasBuilderModal.dataset.orderIndex);
-                if (isNaN(orderIndex)) return;
-                
-                const pizzaItem = order[orderIndex];
-                
-                let basePrice = pizzaItem.price;
-                if (pizzaItem.extras && pizzaItem.extras.length > 0) {
-                    pizzaItem.extras.forEach(extra => {
-                        basePrice -= extra.price;
-                    });
-                }
-                
-                const finalExtras = [];
-                let finalExtrasPrice = 0;
-                const addedExtras = new Set();
-
-                for (const scope in currentPizzaExtrasState) {
-                    currentPizzaExtrasState[scope].forEach(extra => {
-                        const key = `${extra.name}-${extra.placement}`;
-                        if (!addedExtras.has(key)) {
-                            finalExtras.push(extra);
-                            finalExtrasPrice += extra.price;
-                            addedExtras.add(key);
-                        }
-                    });
-                }
-                
-                pizzaItem.extras = finalExtras;
-                pizzaItem.price = basePrice + finalExtrasPrice;
-                
-                updateOrderDisplay();
-                pizzaExtrasBuilderModal.style.display = 'none';
-            }
-
             loadMenuAndRender();
 
             // Event Listeners
