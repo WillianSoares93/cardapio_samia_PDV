@@ -839,7 +839,6 @@
         </div>
     </div>
     
-    <!-- NOVO: Modal para perguntar sobre adicionais -->
     <div id="ask-pizza-extras-modal" class="message-modal">
         <div class="modal-content">
             <p class="text-lg font-semibold text-gray-800 mb-4" id="ask-extras-title"></p>
@@ -851,13 +850,11 @@
         </div>
     </div>
     
-    <!-- NOVO: Modal para construir adicionais da pizza -->
     <div id="pizza-extras-builder-modal" class="modal">
         <div class="modal-content builder-modal">
             <span class="close-button" id="close-pizza-extras-builder-modal">&times;</span>
             <h3 class="text-xl font-bold text-gray-800 mb-4" id="pizza-extras-builder-title"></h3>
             <div id="pizza-extras-scope-buttons" class="flex flex-wrap gap-2 mb-4 border-b pb-4">
-                <!-- Botões de escopo serão inseridos aqui -->
             </div>
             <div id="pizza-extras-ingredients-container" class="mb-4 max-h-80 overflow-y-auto p-2"></div>
             <div class="flex justify-between items-center bg-gray-100 p-4 rounded-lg mt-4">
@@ -901,36 +898,34 @@
 
     <!-- SCRIPTS -->
     <script type="module">
-        // Importa as funções do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
         import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
         document.addEventListener('DOMContentLoaded', function() {
-            // --- INÍCIO DA CONFIGURAÇÃO DO FIREBASE ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyB9LJ-7bOvHGYyFE_H2Qd7XFcyjmSPq_ro",
-            authDomain: "samia-cardapio.firebaseapp.com",
-            projectId: "samia-cardapio",
-            storageBucket: "samia-cardapio.firebasestorage.app",
-            messagingSenderId: "223260436641",
-            appId: "1:223260436641:web:adf78e77a0267f66f1e8e0"
-        };
+            const firebaseConfig = {
+                apiKey: "AIzaSyB9LJ-7bOvHGYyFE_H2Qd7XFcyjmSPq_ro",
+                authDomain: "samia-cardapio.firebaseapp.com",
+                projectId: "samia-cardapio",
+                storageBucket: "samia-cardapio.firebasestorage.app",
+                messagingSenderId: "223260436641",
+                appId: "1:223260436641:web:adf78e77a0267f66f1e8e0"
+            };
 
             const app = initializeApp(firebaseConfig);
             const db = getFirestore(app);
-            // --- FIM DA CONFIGURAÇÃO DO FIREBASE ---
 
+            // AQUI COMEÇA O CÓDIGO JS COMPLETO
             let order = [];
             let allMenuData = [];
             let allPromotionsData = [];
             let deliveryFeesData = [];
             let allBurgerIngredients = {};
-            let allPizzaIngredients = {}; 
-            let isSelectingHalfPizza = false; 
-            let isFirstHalfPromotional = false; 
-            let deferredPrompt; 
-            let selectedPaymentMethod = null; 
-            let isCheckoutInitiated = false; 
+            let allPizzaIngredients = {};
+            let isSelectingHalfPizza = false;
+            let isFirstHalfPromotional = false;
+            let deferredPrompt;
+            let selectedPaymentMethod = null;
+            let isCheckoutInitiated = false;
             let discountPromotion = null;
             let contactInfo = {};
             let isPickupOrder = false;
@@ -940,11 +935,11 @@
             let ingredientVisibility = {};
             let ingredientStatus = {};
             let pizzaHalfStatus = {};
-            let itemExtrasStatus = {}; 
-            let currentPizzaExtrasState = {}; 
+            let itemExtrasStatus = {};
+            let currentPizzaExtrasState = {};
             
             let selectedAddress = {
-                clientName: null, 
+                clientName: null,
                 telefone: null,
                 bairro: null,
                 rua: null,
@@ -965,8 +960,8 @@
             const closePromotionPopupBtn = document.getElementById('close-promotion-popup');
             const closePromotionPopupBtnBottom = document.getElementById('close-promotion-popup-btn');
             const promotionsListEl = document.getElementById('promotions-list');
-            const promotionButton = document.getElementById('promotion-button'); 
-            const cartButton = document.getElementById('cart-button'); 
+            const promotionButton = document.getElementById('promotion-button');
+            const cartButton = document.getElementById('cart-button');
             const subtotalEl = document.getElementById('subtotal');
             const deliveryFeeDisplay = document.getElementById('deliveryFeeDisplay');
             const totalEl = document.getElementById('total');
@@ -986,7 +981,7 @@
             const drinkSuggestionModal = document.getElementById('drink-suggestion-modal');
             const closeDrinkSuggestionModalBtn = document.getElementById('close-drink-suggestion-modal');
             const suggestedDrinksList = document.getElementById('suggested-drinks-list');
-            const proceedWithoutDrinksBtn = document.getElementById('proceed-without-drinks'); 
+            const proceedWithoutDrinksBtn = document.getElementById('proceed-without-drinks');
             const confirmNoDrinkModal = document.getElementById('confirm-no-drink-modal');
             const closeConfirmNoDrinkModalBtn = document.getElementById('close-confirm-no-drink-modal');
             const confirmNoDrinkYesBtn = document.getElementById('confirm-no-drink-yes');
@@ -998,10 +993,10 @@
             const closePaymentMethodModalBtn = document.getElementById('close-payment-method-modal');
             const paymentOptionsContainer = document.getElementById('payment-options-container');
             const confirmPaymentMethodBtn = document.getElementById('confirm-payment-method-btn');
-            const trocoInputContainer = document.getElementById('troco-input-container'); 
-            const trocoParaInput = document.getElementById('trocoPara'); 
-            const trocoTotalDisplay = document.getElementById('trocoTotalDisplay'); 
-            const paymentModalTotal = document.getElementById('payment-modal-total'); 
+            const trocoInputContainer = document.getElementById('troco-input-container');
+            const trocoParaInput = document.getElementById('trocoPara');
+            const trocoTotalDisplay = document.getElementById('trocoTotalDisplay');
+            const paymentModalTotal = document.getElementById('payment-modal-total');
             const pixKeyContainer = document.getElementById('pix-key-container');
             const pixDetailsContainer = document.getElementById('pix-details-container');
             const pixKeyDisplay = document.getElementById('pix-key-display');
@@ -1010,7 +1005,7 @@
             const addressInputModal = document.getElementById('address-input-modal');
             const closeAddressModalBtn = document.getElementById('close-address-modal');
             const clientNameInput = document.getElementById('clientNameInput');
-            const contactInput = document.getElementById('contactInput'); 
+            const contactInput = document.getElementById('contactInput');
             const neighborhoodSelect = document.getElementById('neighborhoodSelect');
             const streetInput = document.getElementById('streetInput');
             const numberInput = document.getElementById('numberInput');
@@ -1019,7 +1014,7 @@
             const confirmAddressBtn = document.getElementById('confirmAddressBtn');
             const addressSummarySection = document.getElementById('address-summary-section');
             const clientNameDisplay = document.getElementById('client-name-display');
-            const contactDisplay = document.getElementById('contact-display'); 
+            const contactDisplay = document.getElementById('contact-display');
             const addressDisplay = document.getElementById('address-display');
             const neighborhoodDisplay = document.getElementById('neighborhood-display');
             const referenceDisplay = document.getElementById('reference-display');
@@ -1047,11 +1042,10 @@
             const addPizzaWithExtrasBtn = document.getElementById('add-pizza-with-extras-btn');
 
 
-            let currentPizzaData = {}; 
-            let firstHalfPizza = null; 
-            let isSelectingSecondHalf = false; 
+            let currentPizzaData = {};
+            let firstHalfPizza = null;
+            let isSelectingSecondHalf = false;
             let qrCodeInstance = null;
-
             let isScrollingFromClick = false;
             let categoryObserver;
             let firstPizzaSectionId = null;
@@ -1073,6 +1067,90 @@
                 return name;
             }
 
+            function capitalizeFirstLetter(string) {
+                if (!string) return '';
+                return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
+            }
+            
+            function handleExtraSelectionChange(checkbox, orderIndex, ingredient) {
+                const activeScopeButton = document.querySelector('#pizza-extras-scope-buttons .active');
+                const activeScope = activeScopeButton ? activeScopeButton.dataset.scope : 'toda';
+                
+                let placementText = 'Toda';
+                if (activeScope === 'metade1') placementText = '1ª Metade';
+                if (activeScope === 'metade2') placementText = '2ª Metade';
+
+                if (checkbox.checked) {
+                    if (!currentPizzaExtrasState[activeScope].some(extra => extra.name === ingredient.name)) {
+                        currentPizzaExtrasState[activeScope].push({
+                            name: ingredient.name,
+                            price: ingredient.price,
+                            placement: placementText
+                        });
+                    }
+                } else {
+                    currentPizzaExtrasState[activeScope] = currentPizzaExtrasState[activeScope].filter(extra => extra.name !== ingredient.name);
+                }
+                
+                updatePizzaExtrasPrice(orderIndex);
+            }
+
+            function addCustomBurgerToOrder(baseBurgerItem) {
+                const selectedIngredients = [];
+                let finalTotal = currentBurgerBasePrice;
+
+                let allRequiredCategoriesFilled = true;
+                for (const categoryName in allBurgerIngredients) {
+                    const isRequired = allBurgerIngredients[categoryName][0]?.isRequired || false;
+                    if (isRequired) {
+                        const categoryDiv = document.querySelector(`#burger-builder-modal .ingredient-category[data-category-name="${categoryName}"]`);
+                        if(categoryDiv){
+                            const checkedInput = categoryDiv.querySelector('input:checked');
+                            let quantityCount = 0;
+                            categoryDiv.querySelectorAll('.quantity-display').forEach(d => quantityCount += parseInt(d.textContent));
+                            if (!checkedInput && quantityCount === 0) {
+                                showMessageModal(`Por favor, escolha uma opção na categoria "${capitalizeFirstLetter(categoryName)}".`);
+                                allRequiredCategoriesFilled = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (!allRequiredCategoriesFilled) return;
+
+                document.querySelectorAll('#burger-builder-modal .ingredient-category').forEach(categoryDiv => {
+                    const categoryName = categoryDiv.dataset.categoryName;
+                    categoryDiv.querySelectorAll('input:checked').forEach(input => {
+                        const ingredient = allBurgerIngredients[categoryName].find(ing => ing.id === input.value);
+                        if (ingredient) {
+                            selectedIngredients.push({ name: ingredient.name, category: ingredient.category });
+                            finalTotal += ingredient.price;
+                        }
+                    });
+                    categoryDiv.querySelectorAll('.quantity-display').forEach(display => {
+                        const quantity = parseInt(display.textContent);
+                        if (quantity > 0) {
+                            const container = display.closest('[data-ingredient-id]');
+                            const ingredientId = container.dataset.ingredientId;
+                            const ingredient = allBurgerIngredients[categoryName].find(ing => ing.id === ingredientId);
+                            if (ingredient) {
+                                selectedIngredients.push({ name: `${ingredient.name} (x${quantity})`, category: ingredient.category });
+                                finalTotal += quantity * ingredient.price;
+                            }
+                        }
+                    });
+                });
+
+                addToOrder({
+                    type: 'custom_burger', name: 'Hambúrguer Personalizado', price: finalTotal,
+                    description: `Monte seu hambúrguer.`, ingredients: selectedIngredients, category: baseBurgerItem.category,
+                    acceptsExtras: false
+                }, addCustomBurgerBtn);
+
+                burgerBuilderModal.style.display = 'none';
+                updatePromotionButtonVisibility();
+            }
+
             function formatPizzaCategory(category) {
                 if (!category) return 'PIZZAS';
                 const upperCategory = category.toUpperCase();
@@ -1081,7 +1159,7 @@
                 }
                 return `PIZZA(s) ${upperCategory}`;
             }
-
+            
             function isPwaInstalled() {
                 if (window.matchMedia('(display-mode: standalone)').matches) {
                     return true;
@@ -1362,15 +1440,6 @@
                         return acc;
                     }, {});
 
-                    const rawPizzaIngredients = data.ingredientesPizza || [];
-                     allPizzaIngredients = rawPizzaIngredients.reduce((acc, current) => {
-                        const category = current.category || 'Adicionais';
-                        if (!acc[category]) acc[category] = [];
-                        acc[category].push(current);
-                        return acc;
-                    }, {});
-
-
                     contactInfo = data.contact.reduce((acc, curr) => {
                         if (curr.data && curr.value) acc[curr.data.toLowerCase().replace(/[^a-z0-9]/g, '')] = curr.value;
                         return acc;
@@ -1498,20 +1567,22 @@
                 for (const categoryName in allBurgerIngredients) {
                     const isRequired = allBurgerIngredients[categoryName][0]?.isRequired || false;
                     if (isRequired) {
-                        const categoryDiv = document.querySelector(`.ingredient-category[data-category-name="${categoryName}"]`);
-                        const checkedInput = categoryDiv.querySelector('input:checked');
-                        let quantityCount = 0;
-                        categoryDiv.querySelectorAll('.quantity-display').forEach(d => quantityCount += parseInt(d.textContent));
-                        if (!checkedInput && quantityCount === 0) {
-                            showMessageModal(`Por favor, escolha uma opção na categoria "${capitalizeFirstLetter(categoryName)}".`);
-                            allRequiredCategoriesFilled = false;
-                            break;
+                        const categoryDiv = burgerBuilderModal.querySelector(`.ingredient-category[data-category-name="${categoryName}"]`);
+                        if (categoryDiv) {
+                            const checkedInput = categoryDiv.querySelector('input:checked');
+                            let quantityCount = 0;
+                            categoryDiv.querySelectorAll('.quantity-display').forEach(d => quantityCount += parseInt(d.textContent));
+                            if (!checkedInput && quantityCount === 0) {
+                                showMessageModal(`Por favor, escolha uma opção na categoria "${capitalizeFirstLetter(categoryName)}".`);
+                                allRequiredCategoriesFilled = false;
+                                break;
+                            }
                         }
                     }
                 }
                 if (!allRequiredCategoriesFilled) return;
 
-                document.querySelectorAll('.ingredient-category').forEach(categoryDiv => {
+                burgerBuilderModal.querySelectorAll('.ingredient-category').forEach(categoryDiv => {
                     const categoryName = categoryDiv.dataset.categoryName;
                     categoryDiv.querySelectorAll('input:checked').forEach(input => {
                         const ingredient = allBurgerIngredients[categoryName].find(ing => ing.id === input.value);
@@ -1536,7 +1607,8 @@
 
                 addToOrder({
                     type: 'custom_burger', name: 'Hambúrguer Personalizado', price: finalTotal,
-                    description: `Monte seu hambúrguer.`, ingredients: selectedIngredients, category: baseBurgerItem.category
+                    description: `Monte seu hambúrguer.`, ingredients: selectedIngredients, category: baseBurgerItem.category,
+                    acceptsExtras: false
                 }, addCustomBurgerBtn);
 
                 burgerBuilderModal.style.display = 'none';
