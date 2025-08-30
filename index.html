@@ -1065,9 +1065,24 @@
             
             function formatProductName(name, category) {
                 if (!category) return name;
+                
+                let lowerCaseCategory = category.toLowerCase();
+                
+                // Regras mais específicas para o português
+                if (lowerCaseCategory.endsWith('ais')) {
+                    lowerCaseCategory = lowerCaseCategory.slice(0, -3) + 'al'; // Tradicionais -> Tradicional
+                } else if (lowerCaseCategory.endsWith('es')) {
+                    lowerCaseCategory = lowerCaseCategory.slice(0, -2); // Doces -> Doce
+                } else if (lowerCaseCategory.endsWith('s')) {
+                    lowerCaseCategory = lowerCaseCategory.slice(0, -1); // Pizzas -> Pizza
+                }
+                
                 const lowerCaseName = name.toLowerCase();
-                const lowerCaseCategory = category.toLowerCase().replace(/s$/, ''); // Remove 's' do final (ex: pizzas -> pizza)
+
                 if (!lowerCaseName.includes(lowerCaseCategory)) {
+                    if (category.toLowerCase().includes('pizza')) {
+                        return `${capitalizeFirstLetter(lowerCaseCategory)} de ${name}`;
+                    }
                     return `${capitalizeFirstLetter(lowerCaseCategory)} ${name}`;
                 }
                 return name;
@@ -2767,8 +2782,7 @@
             }
             
             function showAskForExtrasModal(orderItemId, item) {
-                const formattedName = formatProductName(item.name.split(': ')[1] || item.name, item.category);
-                askExtrasTitle.textContent = `Turbine a(o) ${formattedName} adicionando mais ingredientes!`;
+                askExtrasTitle.textContent = "Turbine seu produto adicionando mais ingredientes!";
                 askPizzaExtrasModal.dataset.orderItemId = orderItemId;
                 askPizzaExtrasModal.style.display = 'flex';
             }
@@ -2777,8 +2791,7 @@
                 const pizzaItem = order[orderIndex];
                 if (!pizzaItem) return;
 
-                const formattedName = formatProductName(pizzaItem.name, pizzaItem.category);
-                pizzaExtrasBuilderTitle.textContent = `Adicionais para ${formattedName}`;
+                pizzaExtrasBuilderTitle.textContent = "Adicionais para o seu Produto";
                 pizzaExtrasBuilderModal.dataset.orderIndex = orderIndex;
 
                 const scopeButtonsContainer = document.getElementById('pizza-extras-scope-buttons');
