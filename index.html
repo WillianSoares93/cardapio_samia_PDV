@@ -839,6 +839,7 @@
         </div>
     </div>
     
+    <!-- NOVO: Modal para perguntar sobre adicionais -->
     <div id="ask-pizza-extras-modal" class="message-modal">
         <div class="modal-content">
             <p class="text-lg font-semibold text-gray-800 mb-4" id="ask-extras-title"></p>
@@ -850,11 +851,13 @@
         </div>
     </div>
     
+    <!-- NOVO: Modal para construir adicionais da pizza -->
     <div id="pizza-extras-builder-modal" class="modal">
         <div class="modal-content builder-modal">
             <span class="close-button" id="close-pizza-extras-builder-modal">&times;</span>
             <h3 class="text-xl font-bold text-gray-800 mb-4" id="pizza-extras-builder-title"></h3>
             <div id="pizza-extras-scope-buttons" class="flex flex-wrap gap-2 mb-4 border-b pb-4">
+                <!-- Botões de escopo serão inseridos aqui -->
             </div>
             <div id="pizza-extras-ingredients-container" class="mb-4 max-h-80 overflow-y-auto p-2"></div>
             <div class="flex justify-between items-center bg-gray-100 p-4 rounded-lg mt-4">
@@ -898,35 +901,36 @@
 
     <!-- SCRIPTS -->
     <script type="module">
+        // Importa as funções do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
         import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
         document.addEventListener('DOMContentLoaded', function() {
-            const firebaseConfig = {
-                apiKey: "AIzaSyB9LJ-7bOvHGYyFE_H2Qd7XFcyjmSPq_ro",
-                authDomain: "samia-cardapio.firebaseapp.com",
-                projectId: "samia-cardapio",
-                storageBucket: "samia-cardapio.firebasestorage.app",
-                messagingSenderId: "223260436641",
-                appId: "1:223260436641:web:adf78e77a0267f66f1e8e0"
-            };
+            // --- INÍCIO DA CONFIGURAÇÃO DO FIREBASE ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyB9LJ-7bOvHGYyFE_H2Qd7XFcyjmSPq_ro",
+            authDomain: "samia-cardapio.firebaseapp.com",
+            projectId: "samia-cardapio",
+            storageBucket: "samia-cardapio.firebasestorage.app",
+            messagingSenderId: "223260436641",
+            appId: "1:223260436641:web:adf78e77a0267f66f1e8e0"
+        };
 
             const app = initializeApp(firebaseConfig);
             const db = getFirestore(app);
+            // --- FIM DA CONFIGURAÇÃO DO FIREBASE ---
 
-            // Variáveis e elementos do DOM...
-            // (Todo o código anterior é mantido)
             let order = [];
             let allMenuData = [];
             let allPromotionsData = [];
             let deliveryFeesData = [];
             let allBurgerIngredients = {};
-            let allPizzaIngredients = {};
-            let isSelectingHalfPizza = false;
-            let isFirstHalfPromotional = false;
-            let deferredPrompt;
-            let selectedPaymentMethod = null;
-            let isCheckoutInitiated = false;
+            let allPizzaIngredients = {}; 
+            let isSelectingHalfPizza = false; 
+            let isFirstHalfPromotional = false; 
+            let deferredPrompt; 
+            let selectedPaymentMethod = null; 
+            let isCheckoutInitiated = false; 
             let discountPromotion = null;
             let contactInfo = {};
             let isPickupOrder = false;
@@ -936,11 +940,11 @@
             let ingredientVisibility = {};
             let ingredientStatus = {};
             let pizzaHalfStatus = {};
-            let itemExtrasStatus = {};
-            let currentPizzaExtrasState = {};
+            let itemExtrasStatus = {}; 
+            let currentPizzaExtrasState = {}; 
             
             let selectedAddress = {
-                clientName: null,
+                clientName: null, 
                 telefone: null,
                 bairro: null,
                 rua: null,
@@ -949,7 +953,8 @@
                 deliveryFee: 0.00
             };
 
-            // ... (Todos os `getElementById` e constantes)
+            const defaultImage = 'https://www.bakelitsul.com.br/Assets/img/sem-produto-detalhe.png';
+            
             const orderSidebar = document.getElementById('orderSidebar');
             const cartCount = document.getElementById('cartCount');
             const orderItemsContainer = document.getElementById('orderItems');
@@ -960,8 +965,8 @@
             const closePromotionPopupBtn = document.getElementById('close-promotion-popup');
             const closePromotionPopupBtnBottom = document.getElementById('close-promotion-popup-btn');
             const promotionsListEl = document.getElementById('promotions-list');
-            const promotionButton = document.getElementById('promotion-button');
-            const cartButton = document.getElementById('cart-button');
+            const promotionButton = document.getElementById('promotion-button'); 
+            const cartButton = document.getElementById('cart-button'); 
             const subtotalEl = document.getElementById('subtotal');
             const deliveryFeeDisplay = document.getElementById('deliveryFeeDisplay');
             const totalEl = document.getElementById('total');
@@ -981,7 +986,7 @@
             const drinkSuggestionModal = document.getElementById('drink-suggestion-modal');
             const closeDrinkSuggestionModalBtn = document.getElementById('close-drink-suggestion-modal');
             const suggestedDrinksList = document.getElementById('suggested-drinks-list');
-            const proceedWithoutDrinksBtn = document.getElementById('proceed-without-drinks');
+            const proceedWithoutDrinksBtn = document.getElementById('proceed-without-drinks'); 
             const confirmNoDrinkModal = document.getElementById('confirm-no-drink-modal');
             const closeConfirmNoDrinkModalBtn = document.getElementById('close-confirm-no-drink-modal');
             const confirmNoDrinkYesBtn = document.getElementById('confirm-no-drink-yes');
@@ -993,10 +998,10 @@
             const closePaymentMethodModalBtn = document.getElementById('close-payment-method-modal');
             const paymentOptionsContainer = document.getElementById('payment-options-container');
             const confirmPaymentMethodBtn = document.getElementById('confirm-payment-method-btn');
-            const trocoInputContainer = document.getElementById('troco-input-container');
-            const trocoParaInput = document.getElementById('trocoPara');
-            const trocoTotalDisplay = document.getElementById('trocoTotalDisplay');
-            const paymentModalTotal = document.getElementById('payment-modal-total');
+            const trocoInputContainer = document.getElementById('troco-input-container'); 
+            const trocoParaInput = document.getElementById('trocoPara'); 
+            const trocoTotalDisplay = document.getElementById('trocoTotalDisplay'); 
+            const paymentModalTotal = document.getElementById('payment-modal-total'); 
             const pixKeyContainer = document.getElementById('pix-key-container');
             const pixDetailsContainer = document.getElementById('pix-details-container');
             const pixKeyDisplay = document.getElementById('pix-key-display');
@@ -1005,7 +1010,7 @@
             const addressInputModal = document.getElementById('address-input-modal');
             const closeAddressModalBtn = document.getElementById('close-address-modal');
             const clientNameInput = document.getElementById('clientNameInput');
-            const contactInput = document.getElementById('contactInput');
+            const contactInput = document.getElementById('contactInput'); 
             const neighborhoodSelect = document.getElementById('neighborhoodSelect');
             const streetInput = document.getElementById('streetInput');
             const numberInput = document.getElementById('numberInput');
@@ -1014,7 +1019,7 @@
             const confirmAddressBtn = document.getElementById('confirmAddressBtn');
             const addressSummarySection = document.getElementById('address-summary-section');
             const clientNameDisplay = document.getElementById('client-name-display');
-            const contactDisplay = document.getElementById('contact-display');
+            const contactDisplay = document.getElementById('contact-display'); 
             const addressDisplay = document.getElementById('address-display');
             const neighborhoodDisplay = document.getElementById('neighborhood-display');
             const referenceDisplay = document.getElementById('reference-display');
@@ -1042,10 +1047,11 @@
             const addPizzaWithExtrasBtn = document.getElementById('add-pizza-with-extras-btn');
 
 
-            let currentPizzaData = {};
-            let firstHalfPizza = null;
-            let isSelectingSecondHalf = false;
+            let currentPizzaData = {}; 
+            let firstHalfPizza = null; 
+            let isSelectingSecondHalf = false; 
             let qrCodeInstance = null;
+
             let isScrollingFromClick = false;
             let categoryObserver;
             let firstPizzaSectionId = null;
@@ -1056,10 +1062,434 @@
                 { slices: 8, label: '8 Fatias', priceKey: 'basePrice' },
                 { slices: 10, label: '10 Fatias', priceKey: 'price10Slices' }
             ];
+            
+            function formatProductName(name, category) {
+                if (!category) return name;
+                const lowerCaseName = name.toLowerCase();
+                const lowerCaseCategory = category.toLowerCase().replace(/s$/, ''); // Remove 's' do final (ex: pizzas -> pizza)
+                if (!lowerCaseName.includes(lowerCaseCategory)) {
+                    return `${capitalizeFirstLetter(lowerCaseCategory)} ${name}`;
+                }
+                return name;
+            }
 
-            // ... (Todas as funções do código anterior, a partir de `formatProductName`)
+            function formatPizzaCategory(category) {
+                if (!category) return 'PIZZAS';
+                const upperCategory = category.toUpperCase();
+                if (upperCategory.startsWith('PIZZA')) {
+                    return category;
+                }
+                return `PIZZA(s) ${upperCategory}`;
+            }
 
-            // CORREÇÃO da função addCustomBurgerToOrder
+            function isPwaInstalled() {
+                if (window.matchMedia('(display-mode: standalone)').matches) {
+                    return true;
+                }
+                if (navigator.standalone) {
+                    return true;
+                }
+                return false;
+            }
+            
+            function toggleOrderSidebar() {
+                orderSidebar.classList.toggle('translate-x-full');
+                orderSidebar.classList.toggle('translate-x-0');
+
+                if (orderSidebar.classList.contains('translate-x-0')) {
+                    promotionButton.style.display = 'none';
+                    orderSidebar.scrollTop = orderSidebar.scrollHeight;
+                } else {
+                    updatePromotionButtonVisibility();
+                }
+            }
+            
+            function closeOrderSidebar() {
+                orderSidebar.classList.add('translate-x-full');
+                orderSidebar.classList.remove('translate-x-0');
+                updatePromotionButtonVisibility(); 
+            }
+            
+            function showMessageModal(message, onOkCallback = null) {
+                messageModalText.textContent = message;
+                messageModal.style.display = 'flex';
+                updatePromotionButtonVisibility();
+
+                let okBtn = document.getElementById('ok-message-modal');
+                let closeBtn = document.getElementById('close-message-modal');
+
+                const newOkBtn = okBtn.cloneNode(true);
+                okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+                const newCloseBtn = closeBtn.cloneNode(true);
+                closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+
+                const hideAndCallback = () => {
+                    hideMessageModal();
+                    if (onOkCallback) onOkCallback();
+                };
+
+                newOkBtn.addEventListener('click', hideAndCallback);
+                newCloseBtn.addEventListener('click', hideAndCallback);
+                messageModal.onclick = (event) => {
+                    if (event.target === messageModal) {
+                        hideAndCallback();
+                    }
+                };
+            }
+
+            function hideMessageModal() {
+                messageModal.style.display = 'none';
+                updatePromotionButtonVisibility();
+            }
+
+            function resetHalfPizzaSelection() {
+                if (isSelectingHalfPizza && firstHalfPizza) {
+                    const pendingHalfIndex = order.findIndex(orderItem => orderItem.id === 'pending-half-pizza');
+                    if (pendingHalfIndex > -1) {
+                        order.splice(pendingHalfIndex, 1);
+                        updateOrderDisplay(); 
+                    }
+                    firstHalfPizza = null;
+                    isSelectingSecondHalf = false;
+                    isSelectingHalfPizza = false;
+                    isFirstHalfPromotional = false;
+                    toggleAddItemButtons(true);
+                    toggleCategoryButtons(true);
+                    showMessageModal('Seleção de meia pizza cancelada.');
+                }
+            }
+
+            function updateUI() {
+                const visibleItems = allMenuData.filter(item => itemVisibility[item.id] !== false);
+                
+                const orderedCategories = [];
+                const seenCategories = new Set();
+                visibleItems.forEach(item => {
+                    if (item.category && !seenCategories.has(item.category)) {
+                        seenCategories.add(item.category);
+                        orderedCategories.push(item.category);
+                    }
+                });
+
+                createCategoryButtons(orderedCategories);
+                populateMenu(visibleItems, orderedCategories);
+                setupCategoryObserver(); 
+
+                if (burgerBuilderModal.style.display === 'flex') {
+                    const currentBurgerId = burgerBuilderModal.dataset.burgerId;
+                    const burgerItem = allMenuData.find(item => item.id === currentBurgerId);
+                    if (burgerItem) {
+                        openBurgerBuilderModal(burgerItem);
+                    }
+                }
+            }
+
+            function listenToControls() {
+                onSnapshot(doc(db, "config", "item_status"), (doc) => {
+                    unavailableItems = doc.exists() ? doc.data() : {};
+                    updateUI();
+                });
+                onSnapshot(doc(db, "config", "item_visibility"), (doc) => {
+                    itemVisibility = doc.exists() ? doc.data() : {};
+                    updateUI();
+                });
+                onSnapshot(doc(db, "config", "pizza_half_status"), (doc) => {
+                    pizzaHalfStatus = doc.exists() ? doc.data() : {};
+                    allMenuData.forEach(item => {
+                        if (item.isPizza) {
+                            item.allowHalf = pizzaHalfStatus[item.id] !== false;
+                        }
+                    });
+                    if (pizzaOptionModal.style.display === 'flex' && currentPizzaData.id) {
+                        const updatedPizza = allMenuData.find(p => p.id === currentPizzaData.id);
+                        if (updatedPizza) {
+                            renderPizzaOptions(updatedPizza);
+                        }
+                    }
+                });
+                 onSnapshot(doc(db, "config", "item_extras_status"), (doc) => {
+                    itemExtrasStatus = doc.exists() ? doc.data() : {};
+                    allMenuData.forEach(item => {
+                        const defaultExtras = item.isPizza;
+                        item.acceptsExtras = itemExtrasStatus[item.id] === undefined ? defaultExtras : itemExtrasStatus[item.id];
+                    });
+                });
+                onSnapshot(doc(db, "config", "ingredient_status"), (doc) => {
+                    ingredientStatus = doc.exists() ? doc.data() : {};
+                    updateUI();
+                });
+                onSnapshot(doc(db, "config", "ingredient_visibility"), (doc) => {
+                    ingredientVisibility = doc.exists() ? doc.data() : {};
+                    updateUI();
+                });
+            }
+
+            function populateMenu(menuItems, orderedCategories) {
+                const dynamicSectionsContainer = document.getElementById('dynamic-pizza-sections');
+                dynamicSectionsContainer.innerHTML = ''; 
+                firstPizzaSectionId = null;
+
+                const itemsByCategory = {};
+                menuItems.forEach(item => {
+                    if (item.category) {
+                        if (!itemsByCategory[item.category]) {
+                            itemsByCategory[item.category] = [];
+                        }
+                        itemsByCategory[item.category].push(item);
+                    }
+                });
+
+                orderedCategories.forEach(category => {
+                    const sectionId = `${category.toLowerCase().replace(/\s+/g, '-')}-section`;
+                    let sectionEl = document.getElementById(sectionId);
+
+                    if (!sectionEl) {
+                        sectionEl = document.createElement('div');
+                        sectionEl.id = sectionId;
+                        sectionEl.dataset.category = category;
+                        sectionEl.className = 'pizza-category-section mb-8';
+                        
+                        const isPizzaCategory = itemsByCategory[category] && itemsByCategory[category].some(item => item.isPizza);
+                        if (isPizzaCategory && !firstPizzaSectionId) {
+                            firstPizzaSectionId = sectionId;
+                        }
+                        const title = isPizzaCategory ? `Pizzas ${capitalizeFirstLetter(category)}` : capitalizeFirstLetter(category);
+
+                        sectionEl.innerHTML = `
+                            <h3 class="text-xl font-bold text-white p-2 rounded-md bg-red-600 mb-6">${title}</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="${category}-items"></div>
+                        `;
+                        dynamicSectionsContainer.appendChild(sectionEl);
+                    }
+
+                    const categoryItemsEl = document.getElementById(`${category}-items`);
+                    categoryItemsEl.innerHTML = ''; 
+
+                    if (itemsByCategory[category]) {
+                        itemsByCategory[category].forEach(item => {
+                            let itemHtml = '';
+                            const isUnavailable = unavailableItems[item.id] === false;
+                            
+                            const trimmedImageUrl = String(item.imageUrl || '').trim();
+                            let imageElement = '';
+
+                            if (trimmedImageUrl.toLowerCase() === 'sem imagem' || !trimmedImageUrl) {
+                                imageElement = `<div class="no-image-placeholder">Sâmia</div>`;
+                            } else {
+                                imageElement = `<img src="${trimmedImageUrl}" alt="Imagem de ${item.name}" class="w-full h-40 object-cover" onerror="this.parentElement.innerHTML = '<div class=\\'no-image-placeholder\\'>Sâmia</div>';">`;
+                            }
+
+                            const cardOpacityClass = isUnavailable ? 'opacity-60' : '';
+                            const buttonDisabledAttr = isUnavailable ? 'disabled' : '';
+                            const buttonText = isUnavailable ? 'Esgotado' : (item.isCustomizable ? 'Montar' : 'Adicionar');
+                            const buttonClasses = isUnavailable
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-red-600 hover:bg-red-700';
+
+                            if (item.isPizza) {
+                                let pricesHtml = '<div class="flex flex-col items-start">';
+                                let pricesRow1 = '';
+                                let pricesRow2 = '';
+                                
+                                if (item.price4Slices > 0) pricesRow1 += `<div class="text-center px-1"><span class="text-xs text-gray-500">4 Fatias</span><p class="font-bold text-red-600 whitespace-nowrap">R$ ${item.price4Slices.toFixed(2).replace('.', ',')}</p></div>`;
+                                if (item.price6Slices > 0) pricesRow1 += `<div class="text-center ml-2 border-l border-gray-200 pl-2"><span class="text-xs text-gray-500">6 Fatias</span><p class="font-bold text-red-600 whitespace-nowrap">R$ ${item.price6Slices.toFixed(2).replace('.', ',')}</p></div>`;
+                                if (item.basePrice > 0) pricesRow2 += `<div class="text-center px-1"><span class="text-xs text-gray-500">8 Fatias</span><p class="font-bold text-red-600 whitespace-nowrap">R$ ${item.basePrice.toFixed(2).replace('.', ',')}</p></div>`;
+                                if (item.price10Slices > 0) pricesRow2 += `<div class="text-center ml-2 border-l border-gray-200 pl-2"><span class="text-xs text-gray-500">10 Fatias</span><p class="font-bold text-red-600 whitespace-nowrap">R$ ${item.price10Slices.toFixed(2).replace('.', ',')}</p></div>`;
+
+                                if (pricesRow1) pricesHtml += `<div class="flex justify-center items-center">${pricesRow1}</div>`;
+                                if (pricesRow2) pricesHtml += `<div class="flex justify-center items-center mt-2">${pricesRow2}</div>`;
+                                pricesHtml += '</div>';
+
+                                itemHtml = `
+                                    <div class="flavor-card bg-white rounded-xl overflow-hidden shadow-lg flex flex-col ${cardOpacityClass}">
+                                        ${imageElement}
+                                        <div class="p-6 flex flex-col flex-grow">
+                                            <h3 class="text-xl font-bold text-gray-800 mb-2">${item.name}</h3>
+                                            <p class="text-gray-600 text-sm mb-4 flex-grow">${item.description}</p>
+                                            <div class="mt-auto pt-4 border-t border-gray-100">
+                                                <div class="flex justify-between items-center">
+                                                    ${pricesHtml}
+                                                    <button class="add-item-btn ${buttonClasses} text-white px-4 py-2 rounded-full text-sm font-medium transition duration-300 flex-shrink-0 ml-4"
+                                                            data-item-id="${item.id}" data-image-url="${trimmedImageUrl}" ${buttonDisabledAttr}>
+                                                        ${buttonText}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            } else {
+                                itemHtml = `
+                                    <div class="flavor-card bg-white rounded-xl overflow-hidden shadow-lg ${cardOpacityClass}">
+                                        ${imageElement}
+                                        <div class="p-6">
+                                            <h3 class="text-xl font-bold text-gray-800 mb-2">${item.name}</h3>
+                                            <p class="text-gray-600 text-sm mb-4">${item.description}</p>
+                                            <div class="flex justify-between items-center">
+                                                <span class="font-bold text-red-600 text-lg">R$ ${item.basePrice.toFixed(2).replace('.', ',')}</span>
+                                                <button class="add-item-btn ${buttonClasses} text-white px-4 py-2 rounded-full text-sm font-medium transition duration-300"
+                                                        data-item-id="${item.id}" ${buttonDisabledAttr}>
+                                                    ${buttonText}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>										
+                                `;
+                            }
+                            categoryItemsEl.insertAdjacentHTML('beforeend', itemHtml);
+                        });
+                    }
+                });
+
+                attachAddButtonListeners();
+            }
+
+            async function loadMenuAndRender() {
+                try {
+                    const response = await fetch('/api/menu'); 
+                    if (!response.ok) throw new Error(`Erro ao buscar dados da API: ${response.statusText}`);
+                    
+                    const data = await response.json(); 
+                    
+                    allMenuData = data.cardapio;
+                    allPromotionsData = data.promocoes;
+                    deliveryFeesData = data.deliveryFees;
+                    
+                    const rawBurgerIngredients = data.ingredientesHamburguer;
+                    allBurgerIngredients = rawBurgerIngredients.reduce((acc, current) => {
+                        if (!acc[current.category]) acc[current.category] = [];
+                        acc[current.category].push(current);
+                        return acc;
+                    }, {});
+
+                    const rawPizzaIngredients = data.ingredientesPizza || [];
+                     allPizzaIngredients = rawPizzaIngredients.reduce((acc, current) => {
+                        const category = current.category || 'Adicionais';
+                        if (!acc[category]) acc[category] = [];
+                        acc[category].push(current);
+                        return acc;
+                    }, {});
+
+
+                    contactInfo = data.contact.reduce((acc, curr) => {
+                        if (curr.data && curr.value) acc[curr.data.toLowerCase().replace(/[^a-z0-9]/g, '')] = curr.value;
+                        return acc;
+                    }, {});
+                    
+                    discountPromotion = allPromotionsData.find(promo => promo.name === 'Desconto no Pedido' && promo.active);
+                    
+                    listenToControls();
+                    
+                    populateNeighborhoodDropdown(deliveryFeesData); 
+                    populateContactInfo(data.contact);
+                    updatePromotionButtonVisibility(); 
+                    updateCartCount(); 
+                    updateOrderDisplay(); 
+                    updateCheckoutButtonText(); 
+                    showAddressSummary(); 
+                    
+                } catch (error) {
+                    console.error('Erro ao carregar o cardápio:', error);
+                    showMessageModal('Não foi possível carregar o cardápio no momento. Por favor, tente novamente mais tarde.');
+                }
+            }
+            
+            function openBurgerBuilderModal(baseBurgerItem) {
+                burgerBuilderModal.dataset.burgerId = baseBurgerItem.id;
+                burgerIngredientsContainer.innerHTML = '';
+                currentBurgerBasePrice = baseBurgerItem.basePrice;
+
+                for (const categoryName in allBurgerIngredients) {
+                    const ingredients = allBurgerIngredients[categoryName];
+                    const visibleIngredients = ingredients.filter(ing => ingredientVisibility[ing.id] !== false);
+
+                    if (visibleIngredients.length > 0) {
+                        const firstIngredient = visibleIngredients[0];
+                        const isSingleChoice = firstIngredient.isSingleChoice;
+                        const limit = firstIngredient.limit || Infinity;
+                        const isRequired = firstIngredient.isRequired || false;
+
+                        const categoryDiv = document.createElement('div');
+                        categoryDiv.className = 'ingredient-category';
+                        categoryDiv.dataset.limit = limit;
+                        categoryDiv.dataset.categoryName = categoryName;
+
+                        let categoryTitle = capitalizeFirstLetter(categoryName);
+                        if (isRequired) {
+                            categoryTitle += ' (Obrigatório)';
+                        } else if (limit !== Infinity && limit > 1) {
+                            categoryTitle += ` (Escolha até ${limit} variedades)`;
+                        } else if (isSingleChoice) {
+                             categoryTitle += ` (Escolha 1)`;
+                        }
+
+                        categoryDiv.innerHTML = `<h4>${categoryTitle}</h4>`;
+
+                        visibleIngredients.forEach(ingredient => {
+                            const isUnavailable = ingredientStatus[ingredient.id] === false;
+                            const ingredientLimit = ingredient.ingredientLimit || 1;
+                            const priceDisplay = ingredient.price > 0 ? `+ R$ ${ingredient.price.toFixed(2).replace('.', ',')}` : '';
+                            const label = document.createElement('label');
+                            label.className = `ingredient-option ${isUnavailable ? 'opacity-50 cursor-not-allowed' : ''}`;
+
+                            if (isSingleChoice) {
+                                const inputType = 'radio';
+                                const inputName = categoryName;
+                                label.innerHTML = `
+                                    <input type="${inputType}" id="${inputName}-${ingredient.id}" name="${inputName}" value="${ingredient.id}" data-price="${ingredient.price}" class="form-${inputType}" ${isUnavailable ? 'disabled' : ''}>
+                                    <span class="flex-grow">${ingredient.name} ${isUnavailable ? '(Esgotado)' : ''}</span>
+                                    <span class="price ml-2">${priceDisplay}</span>
+                                `;
+                                label.querySelector('input').addEventListener('change', (e) => {
+                                    document.querySelectorAll(`input[name="${inputName}"]`).forEach(el => {
+                                        el.closest('.ingredient-option').classList.remove('selected');
+                                    });
+                                    if (label.querySelector('input:checked')) {
+                                        label.classList.add('selected');
+                                    }
+                                    updateBurgerPrice();
+                                });
+                            } else {
+                                label.innerHTML = `
+                                    <div class="flex-grow">
+                                        <span>${ingredient.name} ${isUnavailable ? '(Esgotado)' : ''}</span>
+                                        <span class="price ml-2">${priceDisplay}</span>
+                                    </div>
+                                    <div class="flex items-center space-x-3" data-ingredient-id="${ingredient.id}" data-price="${ingredient.price}" data-limit="${ingredientLimit}">
+                                        <button type="button" class="quantity-btn minus-btn bg-gray-200 w-7 h-7 rounded-full flex items-center justify-center text-lg font-bold" ${isUnavailable ? 'disabled' : ''}>-</button>
+                                        <span class="quantity-display font-bold text-lg w-4 text-center">0</span>
+                                        <button type="button" class="quantity-btn plus-btn bg-gray-200 w-7 h-7 rounded-full flex items-center justify-center text-lg font-bold" ${isUnavailable ? 'disabled' : ''}>+</button>
+                                    </div>
+                                `;
+                            }
+                            categoryDiv.appendChild(label);
+                        });
+                        burgerIngredientsContainer.appendChild(categoryDiv);
+                    }
+                }
+
+                burgerTotalPriceEl.textContent = 'R$ ' + baseBurgerItem.basePrice.toFixed(2).replace('.', ',');
+                addCustomBurgerBtn.onclick = () => addCustomBurgerToOrder(baseBurgerItem);
+                burgerBuilderModal.style.display = 'flex';
+                updatePromotionButtonVisibility();
+            }
+
+            function updateBurgerPrice() {
+                let total = currentBurgerBasePrice;
+                document.querySelectorAll('#burger-ingredients-container input:checked').forEach(input => {
+                    total += parseFloat(input.dataset.price);
+                });
+                document.querySelectorAll('#burger-ingredients-container .quantity-display').forEach(display => {
+                    const quantity = parseInt(display.textContent);
+                    if (quantity > 0) {
+                        const container = display.closest('[data-ingredient-id]');
+                        const price = parseFloat(container.dataset.price);
+                        total += quantity * price;
+                    }
+                });
+                burgerTotalPriceEl.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
+            }
+
             function addCustomBurgerToOrder(baseBurgerItem) {
                 const selectedIngredients = [];
                 let finalTotal = currentBurgerBasePrice;
@@ -1068,22 +1498,20 @@
                 for (const categoryName in allBurgerIngredients) {
                     const isRequired = allBurgerIngredients[categoryName][0]?.isRequired || false;
                     if (isRequired) {
-                        const categoryDiv = document.querySelector(`#burger-builder-modal .ingredient-category[data-category-name="${categoryName}"]`);
-                        if(categoryDiv){
-                            const checkedInput = categoryDiv.querySelector('input:checked');
-                            let quantityCount = 0;
-                            categoryDiv.querySelectorAll('.quantity-display').forEach(d => quantityCount += parseInt(d.textContent));
-                            if (!checkedInput && quantityCount === 0) {
-                                showMessageModal(`Por favor, escolha uma opção na categoria "${capitalizeFirstLetter(categoryName)}".`);
-                                allRequiredCategoriesFilled = false;
-                                break;
-                            }
+                        const categoryDiv = document.querySelector(`.ingredient-category[data-category-name="${categoryName}"]`);
+                        const checkedInput = categoryDiv.querySelector('input:checked');
+                        let quantityCount = 0;
+                        categoryDiv.querySelectorAll('.quantity-display').forEach(d => quantityCount += parseInt(d.textContent));
+                        if (!checkedInput && quantityCount === 0) {
+                            showMessageModal(`Por favor, escolha uma opção na categoria "${capitalizeFirstLetter(categoryName)}".`);
+                            allRequiredCategoriesFilled = false;
+                            break;
                         }
                     }
                 }
                 if (!allRequiredCategoriesFilled) return;
 
-                document.querySelectorAll('#burger-builder-modal .ingredient-category').forEach(categoryDiv => {
+                document.querySelectorAll('.ingredient-category').forEach(categoryDiv => {
                     const categoryName = categoryDiv.dataset.categoryName;
                     categoryDiv.querySelectorAll('input:checked').forEach(input => {
                         const ingredient = allBurgerIngredients[categoryName].find(ing => ing.id === input.value);
@@ -1108,14 +1536,12 @@
 
                 addToOrder({
                     type: 'custom_burger', name: 'Hambúrguer Personalizado', price: finalTotal,
-                    description: `Monte seu hambúrguer.`, ingredients: selectedIngredients, category: baseBurgerItem.category,
-                    acceptsExtras: false
+                    description: `Monte seu hambúrguer.`, ingredients: selectedIngredients, category: baseBurgerItem.category
                 }, addCustomBurgerBtn);
 
                 burgerBuilderModal.style.display = 'none';
                 updatePromotionButtonVisibility();
             }
-
 
             function capitalizeFirstLetter(string) {
                 if (!string) return '';
