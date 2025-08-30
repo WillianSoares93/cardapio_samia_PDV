@@ -2066,10 +2066,18 @@
                             
                             let actionButtonHtml = '';
                             if (item.acceptsExtras && (item.type === 'full' || item.type === 'split')) {
-                                const buttonText = (item.extras && item.extras.length > 0) ? 'Editar Adicionais' : 'Incluir Adicionais';
-                                actionButtonHtml = `<button class="edit-extras-btn text-xs text-blue-600 hover:underline" data-order-index="${originalIndex}">${buttonText}</button>`;
+                                const hasExtras = item.extras && item.extras.length > 0;
+                                const buttonText = hasExtras ? 'Editar Adicionais' : 'Incluir Adicionais';
+                                const iconClass = hasExtras ? 'fas fa-pencil-alt' : 'fas fa-plus-circle';
+                                actionButtonHtml = `<button class="edit-extras-btn mt-2 px-3 py-1 bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200 text-xs font-semibold inline-flex items-center gap-2 transition-colors" data-order-index="${originalIndex}">
+                                                        <i class="${iconClass} fa-fw"></i>
+                                                        <span>${buttonText}</span>
+                                                    </button>`;
                             } else if (item.type === 'custom_burger') {
-                                actionButtonHtml = `<button class="edit-burger-btn text-xs text-blue-600 hover:underline" data-order-index="${originalIndex}">Editar Hambúrguer</button>`;
+                                actionButtonHtml = `<button class="edit-burger-btn mt-2 px-3 py-1 bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200 text-xs font-semibold inline-flex items-center gap-2 transition-colors" data-order-index="${originalIndex}">
+                                                        <i class="fas fa-pencil-alt fa-fw"></i>
+                                                        <span>Editar Hambúrguer</span>
+                                                    </button>`;
                             }
 
                             itemsHTML += `
@@ -3481,3 +3489,4 @@
     </script>
 </body>
 </html>
+
