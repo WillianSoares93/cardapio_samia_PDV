@@ -2774,7 +2774,7 @@
                         }
                         
                         if (currentPizzaExtrasState[placement]) {
-                            currentPizzaExtrasState[placement].push(extra);
+                            currentPizzaExtrasState[placement].push({ ...extra });
                         }
                     });
                 }
@@ -2812,30 +2812,77 @@
                     const ingredients = allPizzaIngredients[categoryName];
                     const categoryDiv = document.createElement('div');
                     categoryDiv.className = 'ingredient-category';
-                    categoryDiv.innerHTML = `<h4>${capitalizeFirstLetter(categoryName)}</h4>`;
+                    
+                    const firstIngredient = ingredients[0] || {};
+                    const categoryLimit = firstIngredient.categoryLimit || Infinity;
+                    categoryDiv.dataset.limit = categoryLimit;
+                    categoryDiv.dataset.categoryName = categoryName;
+
+                    let title = capitalizeFirstLetter(categoryName);
+                    if (categoryLimit !== Infinity) {
+                        title += ` (Escolha até ${categoryLimit})`;
+                    }
+                    categoryDiv.innerHTML = `<h4>${title}</h4>`;
 
                     ingredients.forEach(ingredient => {
                         const priceDisplay = ingredient.price > 0 ? `+ R$ ${ingredient.price.toFixed(2).replace('.', ',')}` : '';
                         const optionDiv = document.createElement('div');
                         optionDiv.className = 'ingredient-option';
-                        const isChecked = currentPizzaExtrasState[activeScope]?.some(extra => extra.name === ingredient.name);
                         
-                        optionDiv.innerHTML = `
-                            <label class="flex items-center w-full cursor-pointer">
-                                <input type="checkbox" data-name="${ingredient.name}" data-price="${ingredient.price}" class="form-checkbox" ${isChecked ? 'checked' : ''}>
-                                <span class="ml-2 flex-grow">${ingredient.name}</span>
-                                <span class="price">${priceDisplay}</span>
-                            </label>
-                        `;
+                        const existingExtra = currentPizzaExtrasState[activeScope]?.find(extra => extra.name === ingredient.name);
+                        const quantity = existingExtra ? existingExtra.quantity : 0;
+                        const ingredientLimit = ingredient.limit || 1;
 
-                        optionDiv.querySelector('input').addEventListener('change', (e) => handleExtraSelectionChange(e.target, orderIndex, ingredient));
+                        optionDiv.innerHTML = `
+                             <div class="flex-grow">
+                                <span>${ingredient.name}</span>
+                                <span class="price ml-2">${priceDisplay}</span>
+                            </div>
+                            <div class="flex items-center space-x-3" data-name="${ingredient.name}" data-price="${ingredient.price}" data-limit="${ingredientLimit}">
+                                <button type="button" class="quantity-btn minus-btn bg-gray-200 w-7 h-7 rounded-full flex items-center justify-center text-lg font-bold">-</button>
+                                <span class="quantity-display font-bold text-lg w-4 text-center">${quantity}</span>
+                                <button type="button" class="quantity-btn plus-btn bg-gray-200 w-7 h-7 rounded-full flex items-center justify-center text-lg font-bold">+</button>
+                            </div>
+                        `;
+                        if (quantity > 0) optionDiv.classList.add('selected');
+
                         categoryDiv.appendChild(optionDiv);
                     });
                     pizzaExtrasIngredientsContainer.appendChild(categoryDiv);
                 }
             }
 
-            function handleExtraSelectionChange(checkbox, orderIndex, ingredient) {
+            function handleExtraQuantityChange(target, orderIndex) {
+                const isPlus = target.classList.contains('plus-btn');
+                const container = target.closest('[data-name]');
+                const quantityDisplay = container.querySelector('.quantity-display');
+                let currentQuantity = parseInt(quantityDisplay.textContent);
+                const ingredientLimit = parseInt(container.dataset.limit);
+                const categoryDiv = container.closest('.ingredient-category');
+                const categoryLimit = parseInt(categoryDiv.dataset.limit);
+
+                let distinctItemsCount = 0;
+                categoryDiv.querySelectorAll('.quantity-display').forEach(display => {
+                    if (parseInt(display.textContent) > 0) {
+                        distinctItemsCount++;
+                    }
+                });
+
+                if (isPlus) {
+                    if (currentQuantity < ingredientLimit) {
+                        if (currentQuantity === 0 && distinctItemsCount >= categoryLimit) {
+                            showMessageModal(`Você pode escolher no máximo ${categoryLimit} variedades de ingredientes para esta categoria.`);
+                            return;
+                        }
+                        currentQuantity++;
+                    }
+                } else {
+                    if (currentQuantity > 0) {
+                        currentQuantity--;
+                    }
+                }
+                quantityDisplay.textContent = currentQuantity;
+                
                 const activeScopeButton = document.querySelector('#pizza-extras-scope-buttons .active');
                 const activeScope = activeScopeButton ? activeScopeButton.dataset.scope : 'toda';
                 
@@ -2843,16 +2890,28 @@
                 if (activeScope === 'metade1') placementText = '1ª Metade';
                 if (activeScope === 'metade2') placementText = '2ª Metade';
 
-                if (checkbox.checked) {
-                    if (!currentPizzaExtrasState[activeScope].some(extra => extra.name === ingredient.name)) {
+                const ingredientName = container.dataset.name;
+                const ingredientPrice = parseFloat(container.dataset.price);
+
+                const existingExtraIndex = currentPizzaExtrasState[activeScope].findIndex(ex => ex.name === ingredientName);
+
+                if (currentQuantity > 0) {
+                    if (existingExtraIndex > -1) {
+                        currentPizzaExtrasState[activeScope][existingExtraIndex].quantity = currentQuantity;
+                    } else {
                         currentPizzaExtrasState[activeScope].push({
-                            name: ingredient.name,
-                            price: ingredient.price,
-                            placement: placementText
+                            name: ingredientName,
+                            price: ingredientPrice,
+                            placement: placementText,
+                            quantity: currentQuantity
                         });
                     }
+                    container.closest('.ingredient-option').classList.add('selected');
                 } else {
-                    currentPizzaExtrasState[activeScope] = currentPizzaExtrasState[activeScope].filter(extra => extra.name !== ingredient.name);
+                    if (existingExtraIndex > -1) {
+                        currentPizzaExtrasState[activeScope].splice(existingExtraIndex, 1);
+                    }
+                    container.closest('.ingredient-option').classList.remove('selected');
                 }
                 
                 updatePizzaExtrasPrice(orderIndex);
@@ -2864,14 +2923,14 @@
                 let basePrice = pizzaItem.price;
                 if (pizzaItem.extras && pizzaItem.extras.length > 0) {
                     pizzaItem.extras.forEach(extra => {
-                        basePrice -= extra.price;
+                        basePrice -= (extra.price * extra.quantity);
                     });
                 }
 
                 let totalExtrasPrice = 0;
                 for (const scope in currentPizzaExtrasState) {
                     currentPizzaExtrasState[scope].forEach(extra => {
-                        totalExtrasPrice += extra.price;
+                        totalExtrasPrice += (extra.price * extra.quantity);
                     });
                 }
 
@@ -2885,23 +2944,20 @@
                 const pizzaItem = order[orderIndex];
                 
                 let basePrice = pizzaItem.price;
-                if (pizzaItem.extras && pizzaItem.extras.length > 0) {
+                 if (pizzaItem.extras && pizzaItem.extras.length > 0) {
                     pizzaItem.extras.forEach(extra => {
-                        basePrice -= extra.price;
+                        basePrice -= (extra.price * extra.quantity);
                     });
                 }
                 
                 const finalExtras = [];
                 let finalExtrasPrice = 0;
-                const addedExtras = new Set();
-
+                
                 for (const scope in currentPizzaExtrasState) {
                     currentPizzaExtrasState[scope].forEach(extra => {
-                        const key = `${extra.name}-${extra.placement}`;
-                        if (!addedExtras.has(key)) {
+                        if(extra.quantity > 0) {
                             finalExtras.push(extra);
-                            finalExtrasPrice += extra.price;
-                            addedExtras.add(key);
+                            finalExtrasPrice += (extra.price * extra.quantity);
                         }
                     });
                 }
@@ -3311,6 +3367,14 @@
             closePizzaExtrasBuilderModalBtn.addEventListener('click', () => {
                  pizzaExtrasBuilderModal.style.display = 'none';
             });
+
+            pizzaExtrasIngredientsContainer.addEventListener('click', (e) => {
+                 const target = e.target;
+                if (target.classList.contains('quantity-btn')) {
+                    const orderIndex = parseInt(pizzaExtrasBuilderModal.dataset.orderIndex);
+                    handleExtraQuantityChange(target, orderIndex);
+                }
+            });
             
             addPizzaWithExtrasBtn.addEventListener('click', confirmPizzaExtras);
 
@@ -3383,3 +3447,4 @@
     </script>
 </body>
 </html>
+
