@@ -2001,7 +2001,8 @@
                         itemsHTML += `<h4 class="font-bold text-gray-700 mt-4 mb-2 border-b pb-1">${category.toUpperCase()}</h4>`;
                         
                         itemsByCategory[category].forEach(itemObj => {
-                            const { item, originalIndex } = itemObj;
+                            const item = itemObj;
+                            const originalIndex = item.originalIndex;
                             let itemName = item.name;
                             let priceHtml = `<span class="font-bold mr-4">R$ ${item.price.toFixed(2).replace('.', ',')}</span>`;
 
@@ -3382,4 +3383,3 @@
     </script>
 </body>
 </html>
-
