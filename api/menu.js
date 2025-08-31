@@ -68,6 +68,7 @@ function parseCsvData(csvText, type) {
 
     const headersRaw = parseCsvLine(lines[0]);
     const headerMapping = {
+        'id': 'id', // Adicionado para cobrir o caso mais simples
         'id item (único)': 'id', 'nome do item': 'name', 'descrição': 'description',
         'preço 4 fatias': 'price4Slices', 'preço 6 fatias': 'price6Slices',
         'preço 8 fatias': 'basePrice', 'preço 10 fatias': 'price10Slices',
@@ -84,10 +85,11 @@ function parseCsvData(csvText, type) {
         'adicionais': 'name', 'limite adicionais': 'limit', 'limite categoria': 'categoryLimit'
     };
 
-    // CORREÇÃO: Garante que o ID dos adicionais (pizza_ingredients) seja mapeado corretamente.
+    // CORREÇÃO: Garante que o ID dos adicionais (pizza_ingredients) seja mapeado corretamente, cobrindo múltiplas variações de nome de coluna.
     if (type === 'pizza_ingredients') {
         headerMapping['id intem'] = 'id';
-        headerMapping['id item (único)'] = 'id'; // Garante que ambas variações de nome de coluna sejam reconhecidas.
+        headerMapping['id item (único)'] = 'id';
+        headerMapping['id adicional'] = 'id';
     }
 
     const mappedHeaders = headersRaw.map(header => {
@@ -146,48 +148,71 @@ export default async (req, res) => {
         ]);
 
         let cardapioJson = parseCsvData(cardapioCsv, 'cardapio');
+        let ingredientesHamburguerJson = parseCsvData(ingredientesHamburguerCsv, 'burger_ingredients');
+        let ingredientesPizzaJson = parseCsvData(ingredientesPizzaCsv, 'pizza_ingredients');
 
+        // Referências aos documentos de configuração no Firestore
         const itemStatusRef = doc(db, "config", "item_status");
         const itemVisibilityRef = doc(db, "config", "item_visibility");
         const itemExtrasRef = doc(db, "config", "item_extras_status");
         const pizzaHalfStatusRef = doc(db, "config", "pizza_half_status");
+        const ingredientStatusRef = doc(db, "config", "ingredient_status");
+        const ingredientVisibilityRef = doc(db, "config", "ingredient_visibility");
         
         const [
             itemStatusSnap, 
             itemVisibilitySnap,
             itemExtrasSnap, 
-            pizzaHalfStatusSnap
+            pizzaHalfStatusSnap,
+            ingredientStatusSnap,
+            ingredientVisibilitySnap
         ] = await Promise.all([
              getDoc(itemStatusRef),
              getDoc(itemVisibilityRef),
              getDoc(itemExtrasRef),
-             getDoc(pizzaHalfStatusRef)
+             getDoc(pizzaHalfStatusRef),
+             getDoc(ingredientStatusRef),
+             getDoc(ingredientVisibilityRef)
         ]);
         
+        // Dados de configuração
         const unavailableItems = itemStatusSnap.exists() ? itemStatusSnap.data() : {};
         const hiddenItems = itemVisibilitySnap.exists() ? itemVisibilitySnap.data() : {};
         const itemExtrasStatus = itemExtrasSnap.exists() ? itemExtrasSnap.data() : {};
         const pizzaHalfStatus = pizzaHalfStatusSnap.exists() ? pizzaHalfStatusSnap.data() : {};
+        const unavailableIngredients = ingredientStatusSnap.exists() ? ingredientStatusSnap.data() : {};
+        const hiddenIngredients = ingredientVisibilitySnap.exists() ? ingredientVisibilitySnap.data() : {};
 
+        // Filtra e mapeia os ITENS DO CARDÁPIO
         cardapioJson = cardapioJson
-            .filter(item => hiddenItems[item.id] !== false) // Primeiro, remove os itens ocultos
+            .filter(item => hiddenItems[item.id] !== false)
             .map(item => {
                 const isAvailable = unavailableItems[item.id] !== false;
-                
                 const acceptsExtrasDefault = item.isPizza; 
                 const acceptsExtras = itemExtrasStatus[item.id] === undefined ? acceptsExtrasDefault : itemExtrasStatus[item.id];
-
                 const allowsHalf = item.isPizza ? (pizzaHalfStatus[item.id] === undefined ? true : pizzaHalfStatus[item.id]) : false;
-
                 return { ...item, available: isAvailable, acceptsExtras, allowHalf: allowsHalf };
             });
+            
+        // CORREÇÃO: Filtra e mapeia os INGREDIENTES DE HAMBÚRGUER E ADICIONAIS DE PIZZA
+        const filterIngredients = (ingredientList) => {
+            return ingredientList
+                .filter(ing => hiddenIngredients[ing.id] !== false)
+                .map(ing => ({
+                    ...ing,
+                    available: unavailableIngredients[ing.id] !== false
+                }));
+        };
+
+        ingredientesHamburguerJson = filterIngredients(ingredientesHamburguerJson);
+        ingredientesPizzaJson = filterIngredients(ingredientesPizzaJson);
 
         res.status(200).json({
             cardapio: cardapioJson,
             promocoes: parseCsvData(promocoesCsv, 'promocoes'),
             deliveryFees: parseCsvData(deliveryFeesCsv, 'delivery'),
-            ingredientesHamburguer: parseCsvData(ingredientesHamburguerCsv, 'burger_ingredients'),
-            ingredientesPizza: parseCsvData(ingredientesPizzaCsv, 'pizza_ingredients'),
+            ingredientesHamburguer: ingredientesHamburguerJson,
+            ingredientesPizza: ingredientesPizzaJson,
             contact: parseCsvData(contactCsv, 'contact')
         });
 
@@ -196,3 +221,4 @@ export default async (req, res) => {
         res.status(500).json({ error: `Erro interno no servidor: ${error.message}` });
     }
 };
+
