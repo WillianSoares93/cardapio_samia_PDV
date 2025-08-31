@@ -439,7 +439,8 @@
             row.dataset.type = type;
             
             let currentStatus, currentVisibility;
-
+            
+            // CORREÇÃO: Garante que as variáveis de estado corretas sejam usadas para cada tipo.
             if (type === 'item') {
                 currentStatus = itemStatus;
                 currentVisibility = itemVisibility;
