@@ -184,12 +184,20 @@
         let allItems = [];
         let allIngredients = [];
         let allExtras = [];
+        
+        // Status dos Itens
         let itemStatus = {};
         let itemVisibility = {};
         let itemExtrasStatus = {}; 
         let pizzaHalfStatus = {};
+        
+        // Status dos Ingredientes do Hambúrguer
         let ingredientStatus = {};
         let ingredientVisibility = {};
+
+        // CORREÇÃO: Novas variáveis de estado para os Adicionais
+        let extraStatus = {};
+        let extraVisibility = {};
 
         async function initializeManager() {
             await fetchMenuData();
@@ -252,35 +260,42 @@
         }
 
         function listenToStatusChanges() {
+            // Ouvintes para ITENS
             onSnapshot(doc(db, "config", "item_status"), (doc) => {
                 itemStatus = doc.exists() ? doc.data() : {};
-                updateAllRows();
-                filterLists();
+                updateAllRows(); filterLists();
             });
             onSnapshot(doc(db, "config", "item_visibility"), (doc) => {
                 itemVisibility = doc.exists() ? doc.data() : {};
-                updateAllRows();
-                filterLists();
+                updateAllRows(); filterLists();
             });
             onSnapshot(doc(db, "config", "item_extras_status"), (doc) => { 
                 itemExtrasStatus = doc.exists() ? doc.data() : {};
-                updateAllRows();
-                filterLists();
+                updateAllRows(); filterLists();
             });
             onSnapshot(doc(db, "config", "pizza_half_status"), (doc) => {
                 pizzaHalfStatus = doc.exists() ? doc.data() : {};
-                updateAllRows();
-                filterLists();
+                updateAllRows(); filterLists();
             });
+
+            // Ouvintes para INGREDIENTES DE HAMBÚRGUER
             onSnapshot(doc(db, "config", "ingredient_status"), (doc) => {
                 ingredientStatus = doc.exists() ? doc.data() : {};
-                updateAllRows();
-                filterLists();
+                updateAllRows(); filterLists();
             });
             onSnapshot(doc(db, "config", "ingredient_visibility"), (doc) => {
                 ingredientVisibility = doc.exists() ? doc.data() : {};
-                updateAllRows();
-                filterLists();
+                updateAllRows(); filterLists();
+            });
+
+            // CORREÇÃO: Novos ouvintes para ADICIONAIS
+            onSnapshot(doc(db, "config", "extra_status"), (doc) => {
+                extraStatus = doc.exists() ? doc.data() : {};
+                updateAllRows(); filterLists();
+            });
+            onSnapshot(doc(db, "config", "extra_visibility"), (doc) => {
+                extraVisibility = doc.exists() ? doc.data() : {};
+                updateAllRows(); filterLists();
             });
         }
         
@@ -289,11 +304,22 @@
                 const type = row.dataset.type;
                 const itemId = row.dataset.itemId;
                 
-                // CORREÇÃO: Usar o mesmo status para ingredientes e extras
-                const isIngredientOrExtra = type === 'ingredient' || type === 'extra';
-                const currentStatus = isIngredientOrExtra ? ingredientStatus : itemStatus;
-                const currentVisibility = isIngredientOrExtra ? ingredientVisibility : itemVisibility;
+                let currentStatus, currentVisibility;
 
+                // CORREÇÃO: Direciona para as variáveis de estado corretas
+                if (type === 'item') {
+                    currentStatus = itemStatus;
+                    currentVisibility = itemVisibility;
+                } else if (type === 'ingredient') {
+                    currentStatus = ingredientStatus;
+                    currentVisibility = ingredientVisibility;
+                } else if (type === 'extra') {
+                    currentStatus = extraStatus;
+                    currentVisibility = extraVisibility;
+                } else {
+                    return; // Tipo desconhecido
+                }
+                
                 const isAvailable = currentStatus[itemId] !== false;
                 const isVisible = currentVisibility[itemId] !== false;
                 
@@ -375,7 +401,12 @@
                 const list = document.createElement('div');
                 list.className = 'mt-2 space-y-3';
                 itemsByCategory[category].forEach(item => {
-                    list.appendChild(createAvailabilityRow(item, type));
+                    // CORREÇÃO: Adiciona uma verificação para garantir que o item tem um ID antes de criar a linha
+                    if (item.id) {
+                        list.appendChild(createAvailabilityRow(item, type));
+                    } else {
+                        console.warn('Item sem ID encontrado e ignorado:', item);
+                    }
                 });
                 categoryDiv.appendChild(list);
                 container.appendChild(categoryDiv);
@@ -414,10 +445,20 @@
             row.dataset.category = item.category || 'Outros';
             row.dataset.itemId = item.id;
             row.dataset.type = type;
+            
+            let currentStatus, currentVisibility;
 
-            const isIngredientOrExtra = type === 'ingredient' || type === 'extra';
-            const currentStatus = isIngredientOrExtra ? ingredientStatus : itemStatus;
-            const currentVisibility = isIngredientOrExtra ? ingredientVisibility : itemVisibility;
+            // CORREÇÃO: Pega o estado inicial correto para cada tipo
+            if (type === 'item') {
+                currentStatus = itemStatus;
+                currentVisibility = itemVisibility;
+            } else if (type === 'ingredient') {
+                currentStatus = ingredientStatus;
+                currentVisibility = ingredientVisibility;
+            } else if (type === 'extra') {
+                currentStatus = extraStatus;
+                currentVisibility = extraVisibility;
+            }
 
             const isAvailable = currentStatus[item.id] !== false;
             const isVisible = currentVisibility[item.id] !== false;
@@ -512,29 +553,36 @@
                     throw new Error("ID do item está vazio. A operação não pode ser concluída.");
                 }
 
-                const isIngredientOrExtra = (type === 'ingredient' || type === 'extra');
-                
-                if (isVisible !== undefined) {
-                    const visibilityCollection = isIngredientOrExtra ? 'ingredient_visibility' : 'item_visibility';
-                    const visibilityRef = doc(db, "config", visibilityCollection);
-                    await setDoc(visibilityRef, { [id]: isVisible }, { merge: true });
-                }
-                
                 const finalAvailability = (isVisible === false) ? false : isAvailable;
-                if (finalAvailability !== undefined) {
-                    const statusCollection = isIngredientOrExtra ? 'ingredient_status' : 'item_status';
-                    const statusRef = doc(db, "config", statusCollection);
-                    await setDoc(statusRef, { [id]: finalAvailability }, { merge: true });
-                }
 
-                if (acceptsExtras !== undefined && type === 'item') {
-                    const extrasRef = doc(db, "config", "item_extras_status");
-                    await setDoc(extrasRef, { [id]: acceptsExtras }, { merge: true });
-                }
-                
-                if (allowsHalf !== undefined && type === 'item') {
-                    const halfRef = doc(db, "config", "pizza_half_status");
-                    await setDoc(halfRef, { [id]: allowsHalf }, { merge: true });
+                // CORREÇÃO: Lógica para separar o salvamento por tipo
+                if (type === 'item') {
+                    if (isVisible !== undefined) {
+                        await setDoc(doc(db, "config", "item_visibility"), { [id]: isVisible }, { merge: true });
+                    }
+                    if (finalAvailability !== undefined) {
+                        await setDoc(doc(db, "config", "item_status"), { [id]: finalAvailability }, { merge: true });
+                    }
+                    if (acceptsExtras !== undefined) {
+                        await setDoc(doc(db, "config", "item_extras_status"), { [id]: acceptsExtras }, { merge: true });
+                    }
+                    if (allowsHalf !== undefined) {
+                        await setDoc(doc(db, "config", "pizza_half_status"), { [id]: allowsHalf }, { merge: true });
+                    }
+                } else if (type === 'ingredient') {
+                    if (isVisible !== undefined) {
+                        await setDoc(doc(db, "config", "ingredient_visibility"), { [id]: isVisible }, { merge: true });
+                    }
+                    if (finalAvailability !== undefined) {
+                        await setDoc(doc(db, "config", "ingredient_status"), { [id]: finalAvailability }, { merge: true });
+                    }
+                } else if (type === 'extra') {
+                    if (isVisible !== undefined) {
+                        await setDoc(doc(db, "config", "extra_visibility"), { [id]: isVisible }, { merge: true });
+                    }
+                    if (finalAvailability !== undefined) {
+                        await setDoc(doc(db, "config", "extra_status"), { [id]: finalAvailability }, { merge: true });
+                    }
                 }
 
             } catch (error) {
@@ -547,7 +595,7 @@
             const activePanel = document.querySelector('.tab-panel:not(.hidden)');
             if (!activePanel) return;
 
-            const type = activePanel.id.split('-')[0]; // 'item', 'ingredient', or 'extra'
+            const type = activePanel.id.split('-')[0];
             
             const searchInput = document.getElementById(`search-${type}`);
             const categorySelect = document.getElementById(`${type}-category-select`);
@@ -562,9 +610,19 @@
                 const nameMatch = row.dataset.name.includes(searchTerm);
                 const categoryMatch = selectedCategory === 'Todos' || row.dataset.category === selectedCategory;
 
-                const isIngredientOrExtra = type === 'ingredient' || type === 'extra';
-                const currentStatusDb = isIngredientOrExtra ? ingredientStatus : itemStatus;
-                const currentVisibilityDb = isIngredientOrExtra ? ingredientVisibility : itemVisibility;
+                let currentStatusDb, currentVisibilityDb;
+
+                // CORREÇÃO: Seleciona o banco de dados correto para o filtro
+                if (type === 'item') {
+                    currentStatusDb = itemStatus;
+                    currentVisibilityDb = itemVisibility;
+                } else if (type === 'ingredient') {
+                    currentStatusDb = ingredientStatus;
+                    currentVisibilityDb = ingredientVisibility;
+                } else if (type === 'extra') {
+                    currentStatusDb = extraStatus;
+                    currentVisibilityDb = extraVisibility;
+                }
 
                 const currentIsAvailable = currentStatusDb[itemId] !== false;
                 const currentIsVisible = currentVisibilityDb[itemId] !== false;
@@ -613,3 +671,4 @@
 
 </body>
 </html>
+
