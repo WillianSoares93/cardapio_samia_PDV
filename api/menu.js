@@ -83,8 +83,7 @@ function parseCsvData(csvText, type) {
         'adicionais': 'name', 'limite adicionais': 'limit', 'limite categoria': 'categoryLimit'
     };
     
-    // CORREÇÃO: Garante que a coluna de ID dos ingredientes e adicionais seja mapeada corretamente,
-    // independentemente do nome exato da coluna na planilha.
+    // Garante que a coluna de ID dos ingredientes e adicionais seja mapeada corretamente
     if (type === 'pizza_ingredients' || type === 'burger_ingredients') {
         headerMapping['id item (único)'] = 'id';
         headerMapping['id intem'] = 'id';
@@ -101,7 +100,6 @@ function parseCsvData(csvText, type) {
         const values = parseCsvLine(lines[i]);
         let item = {};
         mappedHeaders.forEach((headerKey, j) => {
-            // CORREÇÃO: Se um valor para um determinado cabeçalho não existir (por exemplo, a linha tem menos colunas), o padrão é uma string vazia.
             const value = values[j] || ''; 
             
             if (['basePrice', 'price6Slices', 'price4Slices', 'price10Slices', 'promoPrice', 'deliveryFee', 'price'].includes(headerKey)) {
@@ -116,8 +114,13 @@ function parseCsvData(csvText, type) {
             }
         });
         
-        // Adiciona apenas se o item tiver um ID válido, garantindo que não adicionamos lixo.
-        if (item.id && String(item.id).trim() !== '') {
+        // MELHORIA: Se não houver ID, gera um a partir do nome do item.
+        if (!item.id && item.name) {
+            item.id = item.name.trim().toLowerCase().replace(/[^a-z0-9]/g, '-');
+        }
+
+        // Adiciona apenas se o item tiver um ID e um nome válidos.
+        if (item.id && String(item.id).trim() !== '' && item.name && String(item.name).trim() !== '') {
             parsedData.push(item);
         }
     }
@@ -128,18 +131,17 @@ export default async (req, res) => {
     res.setHeader('Cache-Control', 's-maxage=5, stale-while-revalidate'); 
 
     try {
-        // CORREÇÃO: Função de fetch mais robusta que NUNCA quebra a API.
         const fetchData = async (url) => {
             try {
                 const response = await fetch(url);
                 if (!response.ok) {
                     console.warn(`Aviso: Falha ao buscar dados de ${url}, status: ${response.status}. Usando dados vazios.`);
-                    return ''; // Retorna string vazia em caso de falha não crítica
+                    return '';
                 }
                 return response.text();
             } catch (error) {
                 console.warn(`Aviso: Erro de rede ao buscar ${url}: ${error.message}. Usando dados vazios.`);
-                return ''; // Retorna string vazia em caso de erro de rede
+                return '';
             }
         };
 
@@ -159,20 +161,18 @@ export default async (req, res) => {
             fetchData(CONTACT_CSV_URL)
         ]);
         
-        // CORREÇÃO: Parseamento de cada CSV dentro de um try-catch individual para resiliência.
         const safeParse = (csv, type) => {
             if (!csv) return [];
             try {
                 return parseCsvData(csv, type);
             } catch (e) {
                 console.error(`Erro ao processar o CSV do tipo "${type}":`, e.message);
-                return []; // Retorna um array vazio se o parse falhar.
+                return [];
             }
         };
 
         let cardapioJson = safeParse(cardapioCsv, 'cardapio');
         
-        // CORREÇÃO: Isola a busca de dados do Firebase para que a API não quebre se o Firebase falhar.
         let unavailableItems = {}, hiddenItems = {}, itemExtrasStatus = {}, pizzaHalfStatus = {};
         try {
             const itemStatusRef = doc(db, "config", "item_status");
@@ -180,7 +180,6 @@ export default async (req, res) => {
             const itemExtrasRef = doc(db, "config", "item_extras_status");
             const pizzaHalfStatusRef = doc(db, "config", "pizza_half_status");
             
-            // CORREÇÃO FINAL: Adiciona as variáveis que faltavam para receber os resultados do Promise.all.
             const [
                 itemStatusSnap, 
                 itemVisibilitySnap,
@@ -199,11 +198,10 @@ export default async (req, res) => {
             pizzaHalfStatus = pizzaHalfStatusSnap.exists() ? pizzaHalfStatusSnap.data() : {};
         } catch (firebaseError) {
             console.error("Vercel Function: Erro ao buscar dados do Firebase. Continuando sem os status em tempo real.", firebaseError.message);
-            // Os objetos de status continuarão vazios, o que significa que todos os itens serão considerados disponíveis/visíveis por padrão.
         }
 
         cardapioJson = cardapioJson
-            .filter(item => item.id && hiddenItems[item.id] !== false) // Garante que o item tem ID antes de filtrar
+            .filter(item => item.id && hiddenItems[item.id] !== false)
             .map(item => {
                 const isAvailable = unavailableItems[item.id] !== false;
                 
@@ -225,7 +223,6 @@ export default async (req, res) => {
         });
 
     } catch (error) {
-        // Este catch agora só deve pegar erros realmente inesperados da lógica interna, não de falhas de rede.
         console.error('Vercel Function: Erro fatal inesperado:', error.message);
         res.status(500).json({ error: `Erro interno no servidor: ${error.message}` });
     }
