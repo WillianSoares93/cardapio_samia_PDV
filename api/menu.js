@@ -83,9 +83,11 @@ function parseCsvData(csvText, type) {
         'adicionais': 'name', 'limite adicionais': 'limit', 'limite categoria': 'categoryLimit'
     };
     
-    // CORREÇÃO: Garante que a coluna de ID dos adicionais seja mapeada corretamente.
+    // CORREÇÃO: Garante que a coluna de ID dos adicionais seja mapeada corretamente,
+    // independentemente do nome exato da coluna na planilha ('id item (único)' ou 'id intem').
     if (type === 'pizza_ingredients') {
         headerMapping['id item (único)'] = 'id';
+        headerMapping['id intem'] = 'id';
     }
 
 
@@ -160,7 +162,7 @@ export default async (req, res) => {
              getDoc(itemStatusRef),
              getDoc(itemVisibilityRef),
              getDoc(itemExtrasRef),
-             getDoc(pizzaHalfStatusRef)
+             getDoc(pizzaHalfStatusSnap)
         ]);
         
         const unavailableItems = itemStatusSnap.exists() ? itemStatusSnap.data() : {};
@@ -195,4 +197,3 @@ export default async (req, res) => {
         res.status(500).json({ error: `Erro interno no servidor: ${error.message}` });
     }
 };
-
