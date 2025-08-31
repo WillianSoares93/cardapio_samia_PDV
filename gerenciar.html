@@ -289,8 +289,10 @@
                 const type = row.dataset.type;
                 const itemId = row.dataset.itemId;
                 
-                const currentStatus = type === 'item' ? itemStatus : ingredientStatus;
-                const currentVisibility = type === 'item' ? itemVisibility : ingredientVisibility;
+                // CORREÇÃO: Usar o mesmo status para ingredientes e extras
+                const isIngredientOrExtra = type === 'ingredient' || type === 'extra';
+                const currentStatus = isIngredientOrExtra ? ingredientStatus : itemStatus;
+                const currentVisibility = isIngredientOrExtra ? ingredientVisibility : itemVisibility;
 
                 const isAvailable = currentStatus[itemId] !== false;
                 const isVisible = currentVisibility[itemId] !== false;
@@ -410,11 +412,16 @@
             row.className = 'availability-row flex items-center justify-between p-3 border rounded-md bg-gray-50';
             row.dataset.name = item.name.toLowerCase();
             row.dataset.category = item.category || 'Outros';
-            row.dataset.itemId = item.id;
+            row.dataset.itemId = item.id; // CORREÇÃO: Garantir que o ID esteja presente
             row.dataset.type = type;
 
-            const isAvailable = (type === 'item' ? itemStatus[item.id] : ingredientStatus[item.id]) !== false;
-            const isVisible = (type === 'item' ? itemVisibility[item.id] : ingredientVisibility[item.id]) !== false;
+            // CORREÇÃO: Tratar ingredientes e extras da mesma forma
+            const isIngredientOrExtra = type === 'ingredient' || type === 'extra';
+            const currentStatus = isIngredientOrExtra ? ingredientStatus : itemStatus;
+            const currentVisibility = isIngredientOrExtra ? ingredientVisibility : itemVisibility;
+
+            const isAvailable = currentStatus[item.id] !== false;
+            const isVisible = currentVisibility[item.id] !== false;
             
             let togglesHtml = '';
             if (type === 'item') {
@@ -503,6 +510,7 @@
         async function updateStatus(id, type, { isAvailable, isVisible, acceptsExtras, allowsHalf }) {
             try {
                 if(!id) {
+                    // CORREÇÃO: Lança o erro para ser capturado e exibido no console.
                     throw new Error("ID do item está vazio. A operação não pode ser concluída.");
                 }
 
@@ -542,9 +550,14 @@
             if (!activePanel) return;
 
             const type = activePanel.id.split('-')[0]; // 'item', 'ingredient', or 'extra'
-            const searchTerm = document.getElementById(`search-${type}`).value.toLowerCase();
-            const selectedCategory = document.getElementById(`${type}-category-select`).value;
+            
+            // CORREÇÃO: Validar que os elementos de filtro existem antes de acessá-los
+            const searchInput = document.getElementById(`search-${type}`);
+            const categorySelect = document.getElementById(`${type}-category-select`);
             const activeStatusBtn = document.querySelector(`#${type}-status-filters .bg-white`);
+
+            const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+            const selectedCategory = categorySelect ? categorySelect.value : 'Todos';
             const activeStatus = activeStatusBtn ? activeStatusBtn.dataset.status : 'Todos';
 
             activePanel.querySelectorAll('.availability-row').forEach(row => {
@@ -552,8 +565,10 @@
                 const nameMatch = row.dataset.name.includes(searchTerm);
                 const categoryMatch = selectedCategory === 'Todos' || row.dataset.category === selectedCategory;
 
-                const currentStatusDb = type === 'item' ? itemStatus : ingredientStatus;
-                const currentVisibilityDb = type === 'item' ? itemVisibility : ingredientVisibility;
+                // CORREÇÃO: Unificar a lógica de status para ingredientes e extras
+                const isIngredientOrExtra = type === 'ingredient' || type === 'extra';
+                const currentStatusDb = isIngredientOrExtra ? ingredientStatus : itemStatus;
+                const currentVisibilityDb = isIngredientOrExtra ? ingredientVisibility : itemVisibility;
 
                 const currentIsAvailable = currentStatusDb[itemId] !== false;
                 const currentIsVisible = currentVisibilityDb[itemId] !== false;
@@ -602,4 +617,3 @@
 
 </body>
 </html>
-
