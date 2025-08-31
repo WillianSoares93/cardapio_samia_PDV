@@ -158,8 +158,18 @@ export default async (req, res) => {
             fetchData(INGREDIENTES_PIZZA_CSV_URL),
             fetchData(CONTACT_CSV_URL)
         ]);
+        
+        // CORREÇÃO: Parseamento de cada CSV dentro de um try-catch individual para resiliência.
+        const safeParse = (csv, type) => {
+            try {
+                return parseCsvData(csv, type);
+            } catch (e) {
+                console.error(`Erro ao processar o CSV do tipo "${type}":`, e.message);
+                return []; // Retorna um array vazio se o parse falhar.
+            }
+        };
 
-        let cardapioJson = parseCsvData(cardapioCsv, 'cardapio');
+        let cardapioJson = safeParse(cardapioCsv, 'cardapio');
 
         const itemStatusRef = doc(db, "config", "item_status");
         const itemVisibilityRef = doc(db, "config", "item_visibility");
@@ -198,11 +208,11 @@ export default async (req, res) => {
 
         res.status(200).json({
             cardapio: cardapioJson,
-            promocoes: parseCsvData(promocoesCsv, 'promocoes'),
-            deliveryFees: parseCsvData(deliveryFeesCsv, 'delivery'),
-            ingredientesHamburguer: parseCsvData(ingredientesHamburguerCsv, 'burger_ingredients'),
-            ingredientesPizza: parseCsvData(ingredientesPizzaCsv, 'pizza_ingredients'),
-            contact: parseCsvData(contactCsv, 'contact')
+            promocoes: safeParse(promocoesCsv, 'promocoes'),
+            deliveryFees: safeParse(deliveryFeesCsv, 'delivery'),
+            ingredientesHamburguer: safeParse(ingredientesHamburguerCsv, 'burger_ingredients'),
+            ingredientesPizza: safeParse(ingredientesPizzaCsv, 'pizza_ingredients'),
+            contact: safeParse(contactCsv, 'contact')
         });
 
     } catch (error) {
