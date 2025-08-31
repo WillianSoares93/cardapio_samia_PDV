@@ -80,11 +80,12 @@ function parseCsvData(csvText, type) {
         'limite': 'limit', 'limite ingrediente': 'ingredientLimit',
         'é obrigatório?(sim/não)': 'isRequired', 'disponível': 'available',
         'dados': 'data', 'valor': 'value',
-        // Mapeamento para Ingredientes da Pizza
         'adicionais': 'name', 'limite adicionais': 'limit', 'limite categoria': 'categoryLimit'
     };
-     if (type === 'pizza_ingredients') {
-        headerMapping['id intem'] = 'id';
+    
+    // CORREÇÃO: Garante que a coluna de ID dos adicionais seja mapeada corretamente.
+    if (type === 'pizza_ingredients') {
+        headerMapping['id item (único)'] = 'id';
     }
 
 
@@ -159,7 +160,7 @@ export default async (req, res) => {
              getDoc(itemStatusRef),
              getDoc(itemVisibilityRef),
              getDoc(itemExtrasRef),
-             getDoc(pizzaHalfStatusRef)
+             getDoc(pizzaHalfStatusSnap)
         ]);
         
         const unavailableItems = itemStatusSnap.exists() ? itemStatusSnap.data() : {};
@@ -194,4 +195,3 @@ export default async (req, res) => {
         res.status(500).json({ error: `Erro interno no servidor: ${error.message}` });
     }
 };
-
