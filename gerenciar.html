@@ -311,6 +311,8 @@
                     return; 
                 }
                 
+                if (!currentStatus || !currentVisibility) return;
+
                 const isAvailable = currentStatus[itemId] !== false;
                 const isVisible = currentVisibility[itemId] !== false;
                 
@@ -584,7 +586,6 @@
             if (!activePanel) return;
             
             let type = activePanel.id.split('-')[0];
-            // CORREÇÃO: Padroniza o tipo para 'extra' para corresponder ao data-type
             if (type === 'extras') {
                 type = 'extra';
             }
