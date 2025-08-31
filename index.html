@@ -1231,24 +1231,43 @@
                         item.acceptsExtras = itemExtrasStatus[item.id] === undefined ? defaultExtras : itemExtrasStatus[item.id];
                     });
                 });
-                // CORREÇÃO: Lógica de atualização em tempo real para os adicionais
                 onSnapshot(doc(db, "config", "ingredient_status"), (doc) => {
                     ingredientStatus = doc.exists() ? doc.data() : {};
-                    // Se o modal de adicionais estiver aberto, atualiza sua visualização
+                    // CORREÇÃO: Atualiza os pop-ups de montagem se estiverem abertos
                     if (pizzaExtrasBuilderModal.style.display === 'flex') {
                         const orderIndex = parseInt(pizzaExtrasBuilderModal.dataset.orderIndex);
                         if (!isNaN(orderIndex)) {
                             renderPizzaExtrasList(orderIndex);
                         }
                     }
+                    if (burgerBuilderModal.style.display === 'flex') {
+                        const burgerId = burgerBuilderModal.dataset.burgerId;
+                        const editIndexStr = burgerBuilderModal.dataset.editIndex;
+                        const burgerItem = allMenuData.find(item => item.id === burgerId);
+                        if (burgerItem) {
+                            const editIndex = editIndexStr ? parseInt(editIndexStr) : null;
+                            const existingItem = (editIndex !== null && order[editIndex]) ? order[editIndex] : null;
+                            openBurgerBuilderModal(burgerItem, editIndex, existingItem);
+                        }
+                    }
                 });
                 onSnapshot(doc(db, "config", "ingredient_visibility"), (doc) => {
                     ingredientVisibility = doc.exists() ? doc.data() : {};
-                    // Se o modal de adicionais estiver aberto, atualiza sua visualização
+                    // CORREÇÃO: Atualiza os pop-ups de montagem se estiverem abertos
                     if (pizzaExtrasBuilderModal.style.display === 'flex') {
                         const orderIndex = parseInt(pizzaExtrasBuilderModal.dataset.orderIndex);
                         if (!isNaN(orderIndex)) {
                             renderPizzaExtrasList(orderIndex);
+                        }
+                    }
+                    if (burgerBuilderModal.style.display === 'flex') {
+                        const burgerId = burgerBuilderModal.dataset.burgerId;
+                        const editIndexStr = burgerBuilderModal.dataset.editIndex;
+                        const burgerItem = allMenuData.find(item => item.id === burgerId);
+                        if (burgerItem) {
+                            const editIndex = editIndexStr ? parseInt(editIndexStr) : null;
+                            const existingItem = (editIndex !== null && order[editIndex]) ? order[editIndex] : null;
+                            openBurgerBuilderModal(burgerItem, editIndex, existingItem);
                         }
                     }
                 });
