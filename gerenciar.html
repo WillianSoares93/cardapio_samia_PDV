@@ -185,17 +185,14 @@
         let allIngredients = [];
         let allExtras = [];
         
-        // Status dos Itens
         let itemStatus = {};
         let itemVisibility = {};
         let itemExtrasStatus = {}; 
         let pizzaHalfStatus = {};
         
-        // Status dos Ingredientes do Hambúrguer
         let ingredientStatus = {};
         let ingredientVisibility = {};
 
-        // CORREÇÃO: Novas variáveis de estado para os Adicionais
         let extraStatus = {};
         let extraVisibility = {};
 
@@ -260,7 +257,6 @@
         }
 
         function listenToStatusChanges() {
-            // Ouvintes para ITENS
             onSnapshot(doc(db, "config", "item_status"), (doc) => {
                 itemStatus = doc.exists() ? doc.data() : {};
                 updateAllRows(); filterLists();
@@ -277,8 +273,6 @@
                 pizzaHalfStatus = doc.exists() ? doc.data() : {};
                 updateAllRows(); filterLists();
             });
-
-            // Ouvintes para INGREDIENTES DE HAMBÚRGUER
             onSnapshot(doc(db, "config", "ingredient_status"), (doc) => {
                 ingredientStatus = doc.exists() ? doc.data() : {};
                 updateAllRows(); filterLists();
@@ -287,8 +281,6 @@
                 ingredientVisibility = doc.exists() ? doc.data() : {};
                 updateAllRows(); filterLists();
             });
-
-            // CORREÇÃO: Novos ouvintes para ADICIONAIS
             onSnapshot(doc(db, "config", "extra_status"), (doc) => {
                 extraStatus = doc.exists() ? doc.data() : {};
                 updateAllRows(); filterLists();
@@ -306,7 +298,6 @@
                 
                 let currentStatus, currentVisibility;
 
-                // CORREÇÃO: Direciona para as variáveis de estado corretas
                 if (type === 'item') {
                     currentStatus = itemStatus;
                     currentVisibility = itemVisibility;
@@ -317,7 +308,7 @@
                     currentStatus = extraStatus;
                     currentVisibility = extraVisibility;
                 } else {
-                    return; // Tipo desconhecido
+                    return; 
                 }
                 
                 const isAvailable = currentStatus[itemId] !== false;
@@ -401,7 +392,6 @@
                 const list = document.createElement('div');
                 list.className = 'mt-2 space-y-3';
                 itemsByCategory[category].forEach(item => {
-                    // CORREÇÃO: Adiciona uma verificação para garantir que o item tem um ID antes de criar a linha
                     if (item.id) {
                         list.appendChild(createAvailabilityRow(item, type));
                     } else {
@@ -555,7 +545,6 @@
 
                 const finalAvailability = (isVisible === false) ? false : isAvailable;
 
-                // CORREÇÃO: Lógica para separar o salvamento por tipo
                 if (type === 'item') {
                     if (isVisible !== undefined) {
                         await setDoc(doc(db, "config", "item_visibility"), { [id]: isVisible }, { merge: true });
@@ -594,7 +583,9 @@
         function filterLists() {
             const activePanel = document.querySelector('.tab-panel:not(.hidden)');
             if (!activePanel) return;
-
+            
+            // CORREÇÃO: O ID do painel de extras é 'extras-panel', o que gera 'extras'
+            // no split, e não 'extra'.
             const type = activePanel.id.split('-')[0];
             
             const searchInput = document.getElementById(`search-${type}`);
@@ -612,16 +603,21 @@
 
                 let currentStatusDb, currentVisibilityDb;
 
-                // CORREÇÃO: Seleciona o banco de dados correto para o filtro
                 if (type === 'item') {
                     currentStatusDb = itemStatus;
                     currentVisibilityDb = itemVisibility;
                 } else if (type === 'ingredient') {
                     currentStatusDb = ingredientStatus;
                     currentVisibilityDb = ingredientVisibility;
-                } else if (type === 'extra') {
+                } else if (type === 'extras') { // CORREÇÃO: De 'extra' para 'extras'
                     currentStatusDb = extraStatus;
                     currentVisibilityDb = extraVisibility;
+                }
+
+                // Prevenção de erro caso o DB não seja encontrado (não deve acontecer com a correção acima)
+                if (!currentStatusDb || !currentVisibilityDb) {
+                    row.style.display = 'flex'; // Mostra a linha para evitar que ela suma em caso de erro
+                    return;
                 }
 
                 const currentIsAvailable = currentStatusDb[itemId] !== false;
