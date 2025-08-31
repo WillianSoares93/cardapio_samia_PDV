@@ -80,12 +80,10 @@ function parseCsvData(csvText, type) {
         'limite': 'limit', 'limite ingrediente': 'ingredientLimit',
         'é obrigatório?(sim/não)': 'isRequired', 'disponível': 'available',
         'dados': 'data', 'valor': 'value',
+        // Mapeamento para Ingredientes da Pizza
         'adicionais': 'name', 'limite adicionais': 'limit', 'limite categoria': 'categoryLimit'
     };
-    
-    // Garante que a coluna de ID dos ingredientes e adicionais seja mapeada corretamente
-    if (type === 'pizza_ingredients' || type === 'burger_ingredients') {
-        headerMapping['id item (único)'] = 'id';
+     if (type === 'pizza_ingredients') {
         headerMapping['id intem'] = 'id';
     }
 
@@ -98,29 +96,21 @@ function parseCsvData(csvText, type) {
     const parsedData = [];
     for (let i = 1; i < lines.length; i++) {
         const values = parseCsvLine(lines[i]);
-        let item = {};
-        mappedHeaders.forEach((headerKey, j) => {
-            const value = values[j] || ''; 
-            
-            if (['basePrice', 'price6Slices', 'price4Slices', 'price10Slices', 'promoPrice', 'deliveryFee', 'price'].includes(headerKey)) {
-                item[headerKey] = parseFloat(String(value).replace(',', '.')) || 0;
-            } else if (['limit', 'categoryLimit', 'ingredientLimit'].includes(headerKey)) {
-                const parsedValue = parseInt(value, 10);
-                item[headerKey] = isNaN(parsedValue) ? Infinity : parsedValue;
-            } else if (['isPizza', 'available', 'active', 'isCustomizable', 'isSingleChoice', 'isRequired'].includes(headerKey)) {
-                item[headerKey] = String(value).toUpperCase() === 'SIM';
-            } else {
-                item[headerKey] = value;
-            }
-        });
-        
-        // MELHORIA: Se não houver ID, gera um a partir do nome do item.
-        if (!item.id && item.name) {
-            item.id = item.name.trim().toLowerCase().replace(/[^a-z0-9]/g, '-');
-        }
-
-        // Adiciona apenas se o item tiver um ID e um nome válidos.
-        if (item.id && String(item.id).trim() !== '' && item.name && String(item.name).trim() !== '') {
+        if (values.length === mappedHeaders.length) {
+            let item = {};
+            mappedHeaders.forEach((headerKey, j) => {
+                let value = values[j];
+                if (['basePrice', 'price6Slices', 'price4Slices', 'price10Slices', 'promoPrice', 'deliveryFee', 'price'].includes(headerKey)) {
+                    item[headerKey] = parseFloat(String(value).replace(',', '.')) || 0;
+                } else if (['limit', 'categoryLimit', 'ingredientLimit'].includes(headerKey)) {
+                    const parsedValue = parseInt(value, 10);
+                    item[headerKey] = isNaN(parsedValue) ? Infinity : parsedValue;
+                } else if (['isPizza', 'available', 'active', 'isCustomizable', 'isSingleChoice', 'isRequired'].includes(headerKey)) {
+                    item[headerKey] = value.toUpperCase() === 'SIM';
+                } else {
+                    item[headerKey] = value;
+                }
+            });
             parsedData.push(item);
         }
     }
@@ -132,17 +122,9 @@ export default async (req, res) => {
 
     try {
         const fetchData = async (url) => {
-            try {
-                const response = await fetch(url);
-                if (!response.ok) {
-                    console.warn(`Aviso: Falha ao buscar dados de ${url}, status: ${response.status}. Usando dados vazios.`);
-                    return '';
-                }
-                return response.text();
-            } catch (error) {
-                console.warn(`Aviso: Erro de rede ao buscar ${url}: ${error.message}. Usando dados vazios.`);
-                return '';
-            }
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Falha ao buscar dados de ${url}`);
+            return response.text();
         };
 
         const [
@@ -160,48 +142,33 @@ export default async (req, res) => {
             fetchData(INGREDIENTES_PIZZA_CSV_URL),
             fetchData(CONTACT_CSV_URL)
         ]);
-        
-        const safeParse = (csv, type) => {
-            if (!csv) return [];
-            try {
-                return parseCsvData(csv, type);
-            } catch (e) {
-                console.error(`Erro ao processar o CSV do tipo "${type}":`, e.message);
-                return [];
-            }
-        };
 
-        let cardapioJson = safeParse(cardapioCsv, 'cardapio');
+        let cardapioJson = parseCsvData(cardapioCsv, 'cardapio');
+
+        const itemStatusRef = doc(db, "config", "item_status");
+        const itemVisibilityRef = doc(db, "config", "item_visibility");
+        const itemExtrasRef = doc(db, "config", "item_extras_status");
+        const pizzaHalfStatusRef = doc(db, "config", "pizza_half_status");
         
-        let unavailableItems = {}, hiddenItems = {}, itemExtrasStatus = {}, pizzaHalfStatus = {};
-        try {
-            const itemStatusRef = doc(db, "config", "item_status");
-            const itemVisibilityRef = doc(db, "config", "item_visibility");
-            const itemExtrasRef = doc(db, "config", "item_extras_status");
-            const pizzaHalfStatusRef = doc(db, "config", "pizza_half_status");
-            
-            const [
-                itemStatusSnap, 
-                itemVisibilitySnap,
-                itemExtrasSnap, 
-                pizzaHalfStatusSnap
-            ] = await Promise.all([
-                 getDoc(itemStatusRef),
-                 getDoc(itemVisibilityRef),
-                 getDoc(itemExtrasRef),
-                 getDoc(pizzaHalfStatusRef)
-            ]);
-            
-            unavailableItems = itemStatusSnap.exists() ? itemStatusSnap.data() : {};
-            hiddenItems = itemVisibilitySnap.exists() ? itemVisibilitySnap.data() : {};
-            itemExtrasStatus = itemExtrasSnap.exists() ? itemExtrasSnap.data() : {};
-            pizzaHalfStatus = pizzaHalfStatusSnap.exists() ? pizzaHalfStatusSnap.data() : {};
-        } catch (firebaseError) {
-            console.error("Vercel Function: Erro ao buscar dados do Firebase. Continuando sem os status em tempo real.", firebaseError.message);
-        }
+        const [
+            itemStatusSnap, 
+            itemVisibilitySnap,
+            itemExtrasSnap, 
+            pizzaHalfStatusSnap
+        ] = await Promise.all([
+             getDoc(itemStatusRef),
+             getDoc(itemVisibilityRef),
+             getDoc(itemExtrasRef),
+             getDoc(pizzaHalfStatusRef)
+        ]);
+        
+        const unavailableItems = itemStatusSnap.exists() ? itemStatusSnap.data() : {};
+        const hiddenItems = itemVisibilitySnap.exists() ? itemVisibilitySnap.data() : {};
+        const itemExtrasStatus = itemExtrasSnap.exists() ? itemExtrasSnap.data() : {};
+        const pizzaHalfStatus = pizzaHalfStatusSnap.exists() ? pizzaHalfStatusSnap.data() : {};
 
         cardapioJson = cardapioJson
-            .filter(item => item.id && hiddenItems[item.id] !== false)
+            .filter(item => hiddenItems[item.id] !== false) // Primeiro, remove os itens ocultos
             .map(item => {
                 const isAvailable = unavailableItems[item.id] !== false;
                 
@@ -215,15 +182,15 @@ export default async (req, res) => {
 
         res.status(200).json({
             cardapio: cardapioJson,
-            promocoes: safeParse(promocoesCsv, 'promocoes'),
-            deliveryFees: safeParse(deliveryFeesCsv, 'delivery'),
-            ingredientesHamburguer: safeParse(ingredientesHamburguerCsv, 'burger_ingredients'),
-            ingredientesPizza: safeParse(ingredientesPizzaCsv, 'pizza_ingredients'),
-            contact: safeParse(contactCsv, 'contact')
+            promocoes: parseCsvData(promocoesCsv, 'promocoes'),
+            deliveryFees: parseCsvData(deliveryFeesCsv, 'delivery'),
+            ingredientesHamburguer: parseCsvData(ingredientesHamburguerCsv, 'burger_ingredients'),
+            ingredientesPizza: parseCsvData(ingredientesPizzaCsv, 'pizza_ingredients'),
+            contact: parseCsvData(contactCsv, 'contact')
         });
 
     } catch (error) {
-        console.error('Vercel Function: Erro fatal inesperado:', error.message);
+        console.error('Vercel Function: Erro fatal:', error.message);
         res.status(500).json({ error: `Erro interno no servidor: ${error.message}` });
     }
 };
