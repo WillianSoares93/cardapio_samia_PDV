@@ -99,25 +99,26 @@ function parseCsvData(csvText, type) {
     const parsedData = [];
     for (let i = 1; i < lines.length; i++) {
         const values = parseCsvLine(lines[i]);
-        if (values.length === mappedHeaders.length) {
-            let item = {};
-            mappedHeaders.forEach((headerKey, j) => {
-                let value = values[j];
-                if (['basePrice', 'price6Slices', 'price4Slices', 'price10Slices', 'promoPrice', 'deliveryFee', 'price'].includes(headerKey)) {
-                    item[headerKey] = parseFloat(String(value).replace(',', '.')) || 0;
-                } else if (['limit', 'categoryLimit', 'ingredientLimit'].includes(headerKey)) {
-                    const parsedValue = parseInt(value, 10);
-                    item[headerKey] = isNaN(parsedValue) ? Infinity : parsedValue;
-                } else if (['isPizza', 'available', 'active', 'isCustomizable', 'isSingleChoice', 'isRequired'].includes(headerKey)) {
-                    item[headerKey] = value.toUpperCase() === 'SIM';
-                } else {
-                    item[headerKey] = value;
-                }
-            });
-            // Adiciona apenas se o item tiver um ID válido
-            if (item.id && item.id.trim() !== '') {
-                parsedData.push(item);
+        let item = {};
+        mappedHeaders.forEach((headerKey, j) => {
+            // CORREÇÃO: Se um valor para um determinado cabeçalho não existir (por exemplo, a linha tem menos colunas), o padrão é uma string vazia.
+            const value = values[j] || ''; 
+            
+            if (['basePrice', 'price6Slices', 'price4Slices', 'price10Slices', 'promoPrice', 'deliveryFee', 'price'].includes(headerKey)) {
+                item[headerKey] = parseFloat(String(value).replace(',', '.')) || 0;
+            } else if (['limit', 'categoryLimit', 'ingredientLimit'].includes(headerKey)) {
+                const parsedValue = parseInt(value, 10);
+                item[headerKey] = isNaN(parsedValue) ? Infinity : parsedValue;
+            } else if (['isPizza', 'available', 'active', 'isCustomizable', 'isSingleChoice', 'isRequired'].includes(headerKey)) {
+                item[headerKey] = String(value).toUpperCase() === 'SIM';
+            } else {
+                item[headerKey] = value;
             }
+        });
+        
+        // Adiciona apenas se o item tiver um ID válido, garantindo que não adicionamos lixo.
+        if (item.id && String(item.id).trim() !== '') {
+            parsedData.push(item);
         }
     }
     return parsedData;
