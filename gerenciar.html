@@ -438,7 +438,6 @@
             
             let currentStatus, currentVisibility;
 
-            // CORREÇÃO: Pega o estado inicial correto para cada tipo
             if (type === 'item') {
                 currentStatus = itemStatus;
                 currentVisibility = itemVisibility;
@@ -584,9 +583,11 @@
             const activePanel = document.querySelector('.tab-panel:not(.hidden)');
             if (!activePanel) return;
             
-            // CORREÇÃO: O ID do painel de extras é 'extras-panel', o que gera 'extras'
-            // no split, e não 'extra'.
-            const type = activePanel.id.split('-')[0];
+            let type = activePanel.id.split('-')[0];
+            // CORREÇÃO: Padroniza o tipo para 'extra' para corresponder ao data-type
+            if (type === 'extras') {
+                type = 'extra';
+            }
             
             const searchInput = document.getElementById(`search-${type}`);
             const categorySelect = document.getElementById(`${type}-category-select`);
@@ -609,14 +610,13 @@
                 } else if (type === 'ingredient') {
                     currentStatusDb = ingredientStatus;
                     currentVisibilityDb = ingredientVisibility;
-                } else if (type === 'extras') { // CORREÇÃO: De 'extra' para 'extras'
+                } else if (type === 'extra') { 
                     currentStatusDb = extraStatus;
                     currentVisibilityDb = extraVisibility;
                 }
 
-                // Prevenção de erro caso o DB não seja encontrado (não deve acontecer com a correção acima)
                 if (!currentStatusDb || !currentVisibilityDb) {
-                    row.style.display = 'flex'; // Mostra a linha para evitar que ela suma em caso de erro
+                    row.style.display = 'flex'; 
                     return;
                 }
 
