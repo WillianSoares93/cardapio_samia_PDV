@@ -170,28 +170,35 @@ export default async (req, res) => {
         };
 
         let cardapioJson = safeParse(cardapioCsv, 'cardapio');
-
-        const itemStatusRef = doc(db, "config", "item_status");
-        const itemVisibilityRef = doc(db, "config", "item_visibility");
-        const itemExtrasRef = doc(db, "config", "item_extras_status");
-        const pizzaHalfStatusRef = doc(db, "config", "pizza_half_status");
         
-        const [
-            itemStatusSnap, 
-            itemVisibilitySnap,
-            itemExtrasSnap, 
-            pizzaHalfStatusSnap
-        ] = await Promise.all([
-             getDoc(itemStatusRef),
-             getDoc(itemVisibilityRef),
-             getDoc(itemExtrasRef),
-             getDoc(pizzaHalfStatusSnap)
-        ]);
-        
-        const unavailableItems = itemStatusSnap.exists() ? itemStatusSnap.data() : {};
-        const hiddenItems = itemVisibilitySnap.exists() ? itemVisibilitySnap.data() : {};
-        const itemExtrasStatus = itemExtrasSnap.exists() ? itemExtrasSnap.data() : {};
-        const pizzaHalfStatus = pizzaHalfStatusSnap.exists() ? pizzaHalfStatusSnap.data() : {};
+        // CORREÇÃO: Isola a busca de dados do Firebase para que a API não quebre se o Firebase falhar.
+        let unavailableItems = {}, hiddenItems = {}, itemExtrasStatus = {}, pizzaHalfStatus = {};
+        try {
+            const itemStatusRef = doc(db, "config", "item_status");
+            const itemVisibilityRef = doc(db, "config", "item_visibility");
+            const itemExtrasRef = doc(db, "config", "item_extras_status");
+            const pizzaHalfStatusRef = doc(db, "config", "pizza_half_status");
+            
+            const [
+                itemStatusSnap, 
+                itemVisibilitySnap,
+                itemExtrasSnap, 
+                pizzaHalfStatusSnap
+            ] = await Promise.all([
+                 getDoc(itemStatusRef),
+                 getDoc(itemVisibilityRef),
+                 getDoc(itemExtrasRef),
+                 getDoc(pizzaHalfStatusSnap)
+            ]);
+            
+            unavailableItems = itemStatusSnap.exists() ? itemStatusSnap.data() : {};
+            hiddenItems = itemVisibilitySnap.exists() ? itemVisibilitySnap.data() : {};
+            itemExtrasStatus = itemExtrasSnap.exists() ? itemExtrasSnap.data() : {};
+            pizzaHalfStatus = pizzaHalfStatusSnap.exists() ? pizzaHalfStatusSnap.data() : {};
+        } catch (firebaseError) {
+            console.error("Vercel Function: Erro ao buscar dados do Firebase. Continuando sem os status em tempo real.", firebaseError.message);
+            // Os objetos de status continuarão vazios, o que significa que todos os itens serão considerados disponíveis/visíveis por padrão.
+        }
 
         cardapioJson = cardapioJson
             .filter(item => item.id && hiddenItems[item.id] !== false) // Garante que o item tem ID antes de filtrar
@@ -216,7 +223,7 @@ export default async (req, res) => {
         });
 
     } catch (error) {
-        // Este catch agora só deve pegar erros realmente inesperados do Firebase ou da lógica interna.
+        // Este catch agora só deve pegar erros realmente inesperados da lógica interna, não de falhas de rede.
         console.error('Vercel Function: Erro fatal inesperado:', error.message);
         res.status(500).json({ error: `Erro interno no servidor: ${error.message}` });
     }
