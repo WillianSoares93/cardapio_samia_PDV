@@ -68,7 +68,6 @@ function parseCsvData(csvText, type) {
 
     const headersRaw = parseCsvLine(lines[0]);
     const headerMapping = {
-        'id': 'id',
         'id item (único)': 'id', 'nome do item': 'name', 'descrição': 'description',
         'preço 4 fatias': 'price4Slices', 'preço 6 fatias': 'price6Slices',
         'preço 8 fatias': 'basePrice', 'preço 10 fatias': 'price10Slices',
@@ -84,12 +83,11 @@ function parseCsvData(csvText, type) {
         // Mapeamento para Ingredientes da Pizza
         'adicionais': 'name', 'limite adicionais': 'limit', 'limite categoria': 'categoryLimit'
     };
-    
-    if (type === 'pizza_ingredients') {
+    if (type === 'pizza_ingredients' || type === 'burger_ingredients') {
         headerMapping['id intem'] = 'id';
         headerMapping['id item (único)'] = 'id';
-        headerMapping['id adicional'] = 'id';
     }
+
 
     const mappedHeaders = headersRaw.map(header => {
         const cleanHeader = header.trim().toLowerCase();
@@ -114,6 +112,14 @@ function parseCsvData(csvText, type) {
                     item[headerKey] = value;
                 }
             });
+            
+            // CORREÇÃO: Adiciona prefixo para garantir IDs únicos
+            if (type === 'burger_ingredients' && item.id) {
+                item.id = `ing-${item.id}`;
+            } else if (type === 'pizza_ingredients' && item.id) {
+                item.id = `extra-${item.id}`;
+            }
+
             parsedData.push(item);
         }
     }
@@ -121,7 +127,8 @@ function parseCsvData(csvText, type) {
 }
 
 export default async (req, res) => {
-    res.setHeader('Cache-Control', 's-maxage=1, stale-while-revalidate'); 
+    // Cache removido para garantir que as alterações de status sejam sempre as mais recentes
+    res.setHeader('Cache-Control', 'no-cache');
 
     try {
         const fetchData = async (url) => {
@@ -145,22 +152,16 @@ export default async (req, res) => {
             fetchData(INGREDIENTES_PIZZA_CSV_URL),
             fetchData(CONTACT_CSV_URL)
         ]);
-
+        
+        // Processa os dados das planilhas
         let cardapioJson = parseCsvData(cardapioCsv, 'cardapio');
+        let promocoesJson = parseCsvData(promocoesCsv, 'promocoes');
+        let deliveryFeesJson = parseCsvData(deliveryFeesCsv, 'delivery');
         let ingredientesHamburguerJson = parseCsvData(ingredientesHamburguerCsv, 'burger_ingredients');
         let ingredientesPizzaJson = parseCsvData(ingredientesPizzaCsv, 'pizza_ingredients');
+        let contactJson = parseCsvData(contactCsv, 'contact');
 
-        // Referências aos documentos de configuração no Firestore
-        const itemStatusRef = doc(db, "config", "item_status");
-        const itemVisibilityRef = doc(db, "config", "item_visibility");
-        const itemExtrasRef = doc(db, "config", "item_extras_status");
-        const pizzaHalfStatusRef = doc(db, "config", "pizza_half_status");
-        const ingredientStatusRef = doc(db, "config", "ingredient_status");
-        const ingredientVisibilityRef = doc(db, "config", "ingredient_visibility");
-        // CORREÇÃO: Novas referências para status de adicionais
-        const extraStatusRef = doc(db, "config", "extra_status");
-        const extraVisibilityRef = doc(db, "config", "extra_visibility");
-        
+        // Busca todos os documentos de status do Firestore
         const [
             itemStatusSnap, 
             itemVisibilitySnap,
@@ -168,62 +169,55 @@ export default async (req, res) => {
             pizzaHalfStatusSnap,
             ingredientStatusSnap,
             ingredientVisibilitySnap,
-            extraStatusSnap, // CORREÇÃO
-            extraVisibilitySnap // CORREÇÃO
+            extraStatusSnap,
+            extraVisibilitySnap
         ] = await Promise.all([
-             getDoc(itemStatusRef),
-             getDoc(itemVisibilityRef),
-             getDoc(itemExtrasRef),
-             getDoc(pizzaHalfStatusRef),
-             getDoc(ingredientStatusRef),
-             getDoc(ingredientVisibilityRef),
-             getDoc(extraStatusRef), // CORREÇÃO
-             getDoc(extraVisibilityRef) // CORREÇÃO
+             getDoc(doc(db, "config", "item_status")),
+             getDoc(doc(db, "config", "item_visibility")),
+             getDoc(doc(db, "config", "item_extras_status")),
+             getDoc(doc(db, "config", "pizza_half_status")),
+             getDoc(doc(db, "config", "ingredient_status")),
+             getDoc(doc(db, "config", "ingredient_visibility")),
+             getDoc(doc(db, "config", "extra_status")),
+             getDoc(doc(db, "config", "extra_visibility"))
         ]);
         
-        // Dados de configuração
-        const unavailableItems = itemStatusSnap.exists() ? itemStatusSnap.data() : {};
-        const hiddenItems = itemVisibilitySnap.exists() ? itemVisibilitySnap.data() : {};
+        const itemStatus = itemStatusSnap.exists() ? itemStatusSnap.data() : {};
+        const itemVisibility = itemVisibilitySnap.exists() ? itemVisibilitySnap.data() : {};
         const itemExtrasStatus = itemExtrasSnap.exists() ? itemExtrasSnap.data() : {};
         const pizzaHalfStatus = pizzaHalfStatusSnap.exists() ? pizzaHalfStatusSnap.data() : {};
-        const unavailableIngredients = ingredientStatusSnap.exists() ? ingredientStatusSnap.data() : {};
-        const hiddenIngredients = ingredientVisibilitySnap.exists() ? ingredientVisibilitySnap.data() : {};
-        // CORREÇÃO: Pega os dados dos novos documentos
-        const unavailableExtras = extraStatusSnap.exists() ? extraStatusSnap.data() : {};
-        const hiddenExtras = extraVisibilitySnap.exists() ? extraVisibilitySnap.data() : {};
-
-        // Filtra e mapeia os ITENS DO CARDÁPIO
+        const ingredientStatus = ingredientStatusSnap.exists() ? ingredientStatusSnap.data() : {};
+        const ingredientVisibility = ingredientVisibilitySnap.exists() ? ingredientVisibilitySnap.data() : {};
+        const extraStatus = extraStatusSnap.exists() ? extraStatusSnap.data() : {};
+        const extraVisibility = extraVisibilitySnap.exists() ? extraVisibilitySnap.data() : {};
+        
+        // Filtra e atualiza os itens principais do cardápio
         cardapioJson = cardapioJson
-            .filter(item => hiddenItems[item.id] !== false)
-            .map(item => {
-                const isAvailable = unavailableItems[item.id] !== false;
-                const acceptsExtrasDefault = item.isPizza; 
-                const acceptsExtras = itemExtrasStatus[item.id] === undefined ? acceptsExtrasDefault : itemExtrasStatus[item.id];
-                const allowsHalf = item.isPizza ? (pizzaHalfStatus[item.id] === undefined ? true : pizzaHalfStatus[item.id]) : false;
-                return { ...item, available: isAvailable, acceptsExtras, allowHalf: allowsHalf };
-            });
-            
-        // Função reutilizável para filtrar listas de ingredientes/adicionais
-        const filterSubItems = (itemList, unavailableMap, hiddenMap) => {
-            return itemList
-                .filter(item => hiddenMap[item.id] !== false)
-                .map(item => ({
-                    ...item,
-                    available: unavailableMap[item.id] !== false
-                }));
-        };
+            .filter(item => itemVisibility[item.id] !== false) 
+            .map(item => ({
+                ...item, 
+                available: itemStatus[item.id] !== false,
+                acceptsExtras: itemExtrasStatus[item.id] === undefined ? item.isPizza : itemExtrasStatus[item.id],
+                allowHalf: item.isPizza ? (pizzaHalfStatus[item.id] !== false) : false
+            }));
 
-        // CORREÇÃO: Aplica os filtros corretos para cada lista
-        ingredientesHamburguerJson = filterSubItems(ingredientesHamburguerJson, unavailableIngredients, hiddenIngredients);
-        ingredientesPizzaJson = filterSubItems(ingredientesPizzaJson, unavailableExtras, hiddenExtras);
+        // Filtra e atualiza os ingredientes de hambúrguer
+        ingredientesHamburguerJson = ingredientesHamburguerJson
+            .filter(item => ingredientVisibility[item.id] !== false)
+            .map(item => ({ ...item, available: ingredientStatus[item.id] !== false }));
+
+        // Filtra e atualiza os adicionais de pizza
+        ingredientesPizzaJson = ingredientesPizzaJson
+            .filter(item => extraVisibility[item.id] !== false)
+            .map(item => ({ ...item, available: extraStatus[item.id] !== false }));
 
         res.status(200).json({
             cardapio: cardapioJson,
-            promocoes: parseCsvData(promocoesCsv, 'promocoes'),
-            deliveryFees: parseCsvData(deliveryFeesCsv, 'delivery'),
+            promocoes: promocoesJson,
+            deliveryFees: deliveryFeesJson,
             ingredientesHamburguer: ingredientesHamburguerJson,
             ingredientesPizza: ingredientesPizzaJson,
-            contact: parseCsvData(contactCsv, 'contact')
+            contact: contactJson
         });
 
     } catch (error) {
