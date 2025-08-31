@@ -114,7 +114,10 @@ function parseCsvData(csvText, type) {
                     item[headerKey] = value;
                 }
             });
-            parsedData.push(item);
+            // Adiciona apenas se o item tiver um ID válido
+            if (item.id && item.id.trim() !== '') {
+                parsedData.push(item);
+            }
         }
     }
     return parsedData;
@@ -124,21 +127,17 @@ export default async (req, res) => {
     res.setHeader('Cache-Control', 's-maxage=5, stale-while-revalidate'); 
 
     try {
-        // CORREÇÃO: Função de fetch mais robusta para não quebrar a API inteira se uma planilha falhar.
-        const fetchData = async (url, isCritical = false) => {
+        // CORREÇÃO: Função de fetch mais robusta que NUNCA quebra a API.
+        const fetchData = async (url) => {
             try {
                 const response = await fetch(url);
                 if (!response.ok) {
-                    const errorMsg = `Falha ao buscar dados de ${url}, status: ${response.status}`;
-                    if (isCritical) throw new Error(errorMsg);
-                    console.warn(`Aviso: ${errorMsg}. Usando dados vazios.`);
+                    console.warn(`Aviso: Falha ao buscar dados de ${url}, status: ${response.status}. Usando dados vazios.`);
                     return ''; // Retorna string vazia em caso de falha não crítica
                 }
                 return response.text();
             } catch (error) {
-                const errorMsg = `Erro de rede ao buscar ${url}: ${error.message}`;
-                if (isCritical) throw new Error(errorMsg);
-                console.warn(`Aviso: ${errorMsg}. Usando dados vazios.`);
+                console.warn(`Aviso: Erro de rede ao buscar ${url}: ${error.message}. Usando dados vazios.`);
                 return ''; // Retorna string vazia em caso de erro de rede
             }
         };
@@ -151,7 +150,7 @@ export default async (req, res) => {
             ingredientesPizzaCsv,
             contactCsv
         ] = await Promise.all([
-            fetchData(CARDAPIO_CSV_URL, true), // O cardápio principal é crítico
+            fetchData(CARDAPIO_CSV_URL),
             fetchData(PROMOCOES_CSV_URL),
             fetchData(DELIVERY_FEES_CSV_URL),
             fetchData(INGREDIENTES_HAMBURGUER_CSV_URL),
@@ -161,6 +160,7 @@ export default async (req, res) => {
         
         // CORREÇÃO: Parseamento de cada CSV dentro de um try-catch individual para resiliência.
         const safeParse = (csv, type) => {
+            if (!csv) return [];
             try {
                 return parseCsvData(csv, type);
             } catch (e) {
@@ -194,7 +194,7 @@ export default async (req, res) => {
         const pizzaHalfStatus = pizzaHalfStatusSnap.exists() ? pizzaHalfStatusSnap.data() : {};
 
         cardapioJson = cardapioJson
-            .filter(item => hiddenItems[item.id] !== false) // Primeiro, remove os itens ocultos
+            .filter(item => item.id && hiddenItems[item.id] !== false) // Garante que o item tem ID antes de filtrar
             .map(item => {
                 const isAvailable = unavailableItems[item.id] !== false;
                 
@@ -216,7 +216,8 @@ export default async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Vercel Function: Erro fatal:', error.message);
+        // Este catch agora só deve pegar erros realmente inesperados do Firebase ou da lógica interna.
+        console.error('Vercel Function: Erro fatal inesperado:', error.message);
         res.status(500).json({ error: `Erro interno no servidor: ${error.message}` });
     }
 };
