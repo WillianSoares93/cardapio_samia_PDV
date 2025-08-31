@@ -70,7 +70,10 @@
                         Itens do Cardápio
                     </button>
                     <button class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-gray-700 hover:border-gray-300" data-target="ingredient-panel">
-                        Ingredientes
+                        Ingredientes Hambúrguer
+                    </button>
+                    <button class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-gray-500 hover:text-gray-700 hover:border-gray-300" data-target="extras-panel">
+                        Adicionais
                     </button>
                 </nav>
             </div>
@@ -117,6 +120,27 @@
                         </div>
                     </div>
                 </div>
+                
+                <div id="extras-panel" class="tab-panel hidden">
+                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <input type="text" id="search-extra" placeholder="Buscar adicional..." class="md:col-span-1 p-2 border rounded-md">
+                        <select id="extra-category-select" class="md:col-span-1 p-2 border rounded-md"></select>
+                        <div id="extra-status-filters" class="md:col-span-1 flex items-center justify-around bg-gray-100 p-1 rounded-md"></div>
+                    </div>
+                     <div class="space-y-4 max-h-[60vh] overflow-y-auto p-2">
+                        <div class="flex items-center justify-between p-3 border-b sticky top-0 bg-gray-50 z-10">
+                            <span class="font-bold text-gray-600 w-2/5">Adicional</span>
+                            <div class="flex items-center justify-around w-3/5">
+                                <span class="font-bold text-gray-600 w-1/2 text-center">Disponível</span>
+                                <span class="font-bold text-gray-600 w-1/2 text-center">Visível</span>
+                            </div>
+                        </div>
+                        <div id="extra-availability-list" class="space-y-4">
+                            <p class="text-gray-500">Carregando adicionais...</p>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </main>
@@ -153,11 +177,13 @@
 
         const itemAvailabilityList = document.getElementById('item-availability-list');
         const ingredientAvailabilityList = document.getElementById('ingredient-availability-list');
+        const extraAvailabilityList = document.getElementById('extra-availability-list');
         const tabsContainer = document.getElementById('availability-tabs');
         const tabPanels = document.querySelectorAll('.tab-panel');
 
         let allItems = [];
         let allIngredients = [];
+        let allExtras = [];
         let itemStatus = {};
         let itemVisibility = {};
         let itemExtrasStatus = {}; 
@@ -169,6 +195,7 @@
             await fetchMenuData();
             renderItemAvailabilityList();
             renderIngredientAvailabilityList();
+            renderExtraAvailabilityList();
             listenToStatusChanges();
             setupTabs();
             setupFilters();
@@ -191,7 +218,7 @@
         }
 
         function setupFilters() {
-            ['item', 'ingredient'].forEach(type => {
+            ['item', 'ingredient', 'extra'].forEach(type => {
                 document.getElementById(`search-${type}`).addEventListener('input', filterLists);
                 document.getElementById(`${type}-category-select`).addEventListener('change', filterLists);
                 document.getElementById(`${type}-status-filters`).addEventListener('click', (e) => {
@@ -215,10 +242,12 @@
                 const data = await response.json();
                 allItems = data.cardapio || [];
                 allIngredients = data.ingredientesHamburguer || [];
+                allExtras = data.ingredientesPizza || [];
             } catch (error) {
                 console.error("Erro ao carregar dados do menu:", error);
                 itemAvailabilityList.innerHTML = '<p class="text-red-500">Erro ao carregar itens.</p>';
                 ingredientAvailabilityList.innerHTML = '<p class="text-red-500">Erro ao carregar ingredientes.</p>';
+                extraAvailabilityList.innerHTML = '<p class="text-red-500">Erro ao carregar adicionais.</p>';
             }
         }
 
@@ -257,23 +286,28 @@
         
         function updateAllRows() {
             document.querySelectorAll('.availability-row').forEach(row => {
-                const type = row.closest('.tab-panel').id.includes('item') ? 'item' : 'ingredient';
+                const type = row.dataset.type;
                 const itemId = row.dataset.itemId;
+                
+                const currentStatus = type === 'item' ? itemStatus : ingredientStatus;
+                const currentVisibility = type === 'item' ? itemVisibility : ingredientVisibility;
 
-                const isAvailable = (type === 'item' ? itemStatus[itemId] : ingredientStatus[itemId]) !== false;
-                const isVisible = (type === 'item' ? itemVisibility[itemId] : ingredientVisibility[itemId]) !== false;
+                const isAvailable = currentStatus[itemId] !== false;
+                const isVisible = currentVisibility[itemId] !== false;
                 
                 const availabilityToggle = row.querySelector('.availability-toggle');
                 const visibilityToggle = row.querySelector('.visibility-toggle');
                 
-                availabilityToggle.checked = isAvailable;
-                visibilityToggle.checked = isVisible;
+                if(availabilityToggle) availabilityToggle.checked = isAvailable;
+                if(visibilityToggle) visibilityToggle.checked = isVisible;
                 
-                availabilityToggle.disabled = !isVisible;
-                if (!isVisible) {
-                    availabilityToggle.closest('label').classList.add('opacity-50');
-                } else {
-                     availabilityToggle.closest('label').classList.remove('opacity-50');
+                if(availabilityToggle) {
+                    availabilityToggle.disabled = !isVisible;
+                    if (!isVisible) {
+                        availabilityToggle.closest('label').classList.add('opacity-50');
+                    } else {
+                        availabilityToggle.closest('label').classList.remove('opacity-50');
+                    }
                 }
                 
                 if (type === 'item') {
@@ -310,19 +344,25 @@
         function renderItemAvailabilityList() {
             renderList(allItems, itemAvailabilityList, 'item');
             populateCategorySelect(allItems, document.getElementById('item-category-select'));
-            renderStatusFilters(document.getElementById('item-status-filters'));
+            renderStatusFilters(document.getElementById('item-status-filters'), 'item');
         }
 
         function renderIngredientAvailabilityList() {
             renderList(allIngredients, ingredientAvailabilityList, 'ingredient');
             populateCategorySelect(allIngredients, document.getElementById('ingredient-category-select'));
-            renderStatusFilters(document.getElementById('ingredient-status-filters'));
+            renderStatusFilters(document.getElementById('ingredient-status-filters'), 'ingredient');
+        }
+        
+        function renderExtraAvailabilityList() {
+            renderList(allExtras, extraAvailabilityList, 'extra');
+            populateCategorySelect(allExtras, document.getElementById('extra-category-select'));
+            renderStatusFilters(document.getElementById('extra-status-filters'), 'extra');
         }
 
         function renderList(items, container, type) {
             container.innerHTML = '';
             if (!Array.isArray(items) || items.length === 0) {
-                container.innerHTML = `<p class="text-gray-500">Nenhum ${type === 'item' ? 'item' : 'ingrediente'} encontrado.</p>`;
+                container.innerHTML = `<p class="text-gray-500">Nenhum item encontrado.</p>`;
                 return;
             }
             const itemsByCategory = groupByCategory(items);
@@ -353,7 +393,7 @@
             if (currentVal) selectElement.value = currentVal;
         }
 
-        function renderStatusFilters(container) {
+        function renderStatusFilters(container, type) {
             if (container.children.length > 0) return;
             const statuses = ['Todos', 'Disponíveis', 'Esgotados', 'Ocultos'];
             statuses.forEach((status, index) => {
@@ -371,6 +411,7 @@
             row.dataset.name = item.name.toLowerCase();
             row.dataset.category = item.category || 'Outros';
             row.dataset.itemId = item.id;
+            row.dataset.type = type;
 
             const isAvailable = (type === 'item' ? itemStatus[item.id] : ingredientStatus[item.id]) !== false;
             const isVisible = (type === 'item' ? itemVisibility[item.id] : ingredientVisibility[item.id]) !== false;
@@ -412,7 +453,7 @@
                             </label>
                         </div>
                     </div>`;
-            } else { // Ingredientes
+            } else { // Ingredientes ou Adicionais
                  togglesHtml = `
                     <div class="flex items-center justify-around w-3/5">
                         <label class="flex items-center justify-center cursor-pointer w-1/2 ${!isVisible ? 'opacity-50' : ''}">
@@ -461,15 +502,17 @@
 
         async function updateStatus(id, type, { isAvailable, isVisible, acceptsExtras, allowsHalf }) {
             try {
+                const isIngredientOrExtra = (type === 'ingredient' || type === 'extra');
+                
                 if (isVisible !== undefined) {
-                    const visibilityCollection = type === 'item' ? 'item_visibility' : 'ingredient_visibility';
+                    const visibilityCollection = isIngredientOrExtra ? 'ingredient_visibility' : 'item_visibility';
                     const visibilityRef = doc(db, "config", visibilityCollection);
                     await setDoc(visibilityRef, { [id]: isVisible }, { merge: true });
                 }
                 
                 const finalAvailability = (isVisible === false) ? false : isAvailable;
                 if (finalAvailability !== undefined) {
-                    const statusCollection = type === 'item' ? 'item_status' : 'ingredient_status';
+                    const statusCollection = isIngredientOrExtra ? 'ingredient_status' : 'item_status';
                     const statusRef = doc(db, "config", statusCollection);
                     await setDoc(statusRef, { [id]: finalAvailability }, { merge: true });
                 }
@@ -494,7 +537,7 @@
             const activePanel = document.querySelector('.tab-panel:not(.hidden)');
             if (!activePanel) return;
 
-            const type = activePanel.id.includes('item') ? 'item' : 'ingredient';
+            const type = activePanel.id.split('-')[0]; // 'item', 'ingredient', or 'extra'
             const searchTerm = document.getElementById(`search-${type}`).value.toLowerCase();
             const selectedCategory = document.getElementById(`${type}-category-select`).value;
             const activeStatusBtn = document.querySelector(`#${type}-status-filters .bg-white`);
@@ -505,8 +548,11 @@
                 const nameMatch = row.dataset.name.includes(searchTerm);
                 const categoryMatch = selectedCategory === 'Todos' || row.dataset.category === selectedCategory;
 
-                const currentIsAvailable = (type === 'item' ? itemStatus[itemId] : ingredientStatus[itemId]) !== false;
-                const currentIsVisible = (type === 'item' ? itemVisibility[itemId] : ingredientVisibility[itemId]) !== false;
+                const currentStatusDb = type === 'item' ? itemStatus : ingredientStatus;
+                const currentVisibilityDb = type === 'item' ? itemVisibility : ingredientVisibility;
+
+                const currentIsAvailable = currentStatusDb[itemId] !== false;
+                const currentIsVisible = currentVisibilityDb[itemId] !== false;
                 
                 let statusMatch = false;
                 switch (activeStatus) {
