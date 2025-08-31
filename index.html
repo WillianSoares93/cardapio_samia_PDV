@@ -939,6 +939,8 @@
             let unavailableItems = {};
             let ingredientVisibility = {};
             let ingredientStatus = {};
+            let extraVisibility = {};
+            let extraStatus = {};
             let pizzaHalfStatus = {};
             let itemExtrasStatus = {}; 
             let currentPizzaExtrasState = {}; 
@@ -1175,8 +1177,10 @@
             }
 
             function updateUI() {
+                // Filtra os itens principais com base na visibilidade
                 const visibleItems = allMenuData.filter(item => itemVisibility[item.id] !== false);
                 
+                // Cria as categorias e o menu com os itens filtrados
                 const orderedCategories = [];
                 const seenCategories = new Set();
                 visibleItems.forEach(item => {
@@ -1189,14 +1193,22 @@
                 createCategoryButtons(orderedCategories);
                 populateMenu(visibleItems, orderedCategories);
                 setupCategoryObserver(); 
-
-                if (burgerBuilderModal.style.display === 'flex') {
+            }
+            
+            function refreshOpenPopups() {
+                 if (burgerBuilderModal.style.display === 'flex') {
                     const currentBurgerId = burgerBuilderModal.dataset.burgerId;
                     const orderIndex = burgerBuilderModal.dataset.editIndex;
                     const burgerItem = allMenuData.find(item => item.id === currentBurgerId);
                     if (burgerItem) {
                         const existingItem = orderIndex ? order[parseInt(orderIndex)] : null;
                         openBurgerBuilderModal(burgerItem, orderIndex ? parseInt(orderIndex) : null, existingItem);
+                    }
+                }
+                if(pizzaExtrasBuilderModal.style.display === 'flex') {
+                    const orderIndex = parseInt(pizzaExtrasBuilderModal.dataset.orderIndex);
+                    if(!isNaN(orderIndex) && order[orderIndex]){
+                        openPizzaExtrasBuilderModal(orderIndex);
                     }
                 }
             }
@@ -1213,7 +1225,7 @@
                 onSnapshot(doc(db, "config", "pizza_half_status"), (doc) => {
                     pizzaHalfStatus = doc.exists() ? doc.data() : {};
                     allMenuData.forEach(item => {
-                        if (item.isPizza) {
+                        if (item.isPizza && item.id) {
                             item.allowHalf = pizzaHalfStatus[item.id] !== false;
                         }
                     });
@@ -1227,49 +1239,27 @@
                  onSnapshot(doc(db, "config", "item_extras_status"), (doc) => {
                     itemExtrasStatus = doc.exists() ? doc.data() : {};
                     allMenuData.forEach(item => {
-                        const defaultExtras = item.isPizza;
-                        item.acceptsExtras = itemExtrasStatus[item.id] === undefined ? defaultExtras : itemExtrasStatus[item.id];
+                        if (item.id) {
+                           const defaultExtras = item.isPizza;
+                           item.acceptsExtras = itemExtrasStatus[item.id] === undefined ? defaultExtras : itemExtrasStatus[item.id];
+                        }
                     });
                 });
                 onSnapshot(doc(db, "config", "ingredient_status"), (doc) => {
                     ingredientStatus = doc.exists() ? doc.data() : {};
-                    // CORREÇÃO: Atualiza os pop-ups de montagem se estiverem abertos
-                    if (pizzaExtrasBuilderModal.style.display === 'flex') {
-                        const orderIndex = parseInt(pizzaExtrasBuilderModal.dataset.orderIndex);
-                        if (!isNaN(orderIndex)) {
-                            renderPizzaExtrasList(orderIndex);
-                        }
-                    }
-                    if (burgerBuilderModal.style.display === 'flex') {
-                        const burgerId = burgerBuilderModal.dataset.burgerId;
-                        const editIndexStr = burgerBuilderModal.dataset.editIndex;
-                        const burgerItem = allMenuData.find(item => item.id === burgerId);
-                        if (burgerItem) {
-                            const editIndex = editIndexStr ? parseInt(editIndexStr) : null;
-                            const existingItem = (editIndex !== null && order[editIndex]) ? order[editIndex] : null;
-                            openBurgerBuilderModal(burgerItem, editIndex, existingItem);
-                        }
-                    }
+                    refreshOpenPopups();
                 });
                 onSnapshot(doc(db, "config", "ingredient_visibility"), (doc) => {
                     ingredientVisibility = doc.exists() ? doc.data() : {};
-                    // CORREÇÃO: Atualiza os pop-ups de montagem se estiverem abertos
-                    if (pizzaExtrasBuilderModal.style.display === 'flex') {
-                        const orderIndex = parseInt(pizzaExtrasBuilderModal.dataset.orderIndex);
-                        if (!isNaN(orderIndex)) {
-                            renderPizzaExtrasList(orderIndex);
-                        }
-                    }
-                    if (burgerBuilderModal.style.display === 'flex') {
-                        const burgerId = burgerBuilderModal.dataset.burgerId;
-                        const editIndexStr = burgerBuilderModal.dataset.editIndex;
-                        const burgerItem = allMenuData.find(item => item.id === burgerId);
-                        if (burgerItem) {
-                            const editIndex = editIndexStr ? parseInt(editIndexStr) : null;
-                            const existingItem = (editIndex !== null && order[editIndex]) ? order[editIndex] : null;
-                            openBurgerBuilderModal(burgerItem, editIndex, existingItem);
-                        }
-                    }
+                    refreshOpenPopups();
+                });
+                onSnapshot(doc(db, "config", "extra_status"), (doc) => {
+                    extraStatus = doc.exists() ? doc.data() : {};
+                    refreshOpenPopups();
+                });
+                onSnapshot(doc(db, "config", "extra_visibility"), (doc) => {
+                    extraVisibility = doc.exists() ? doc.data() : {};
+                    refreshOpenPopups();
                 });
             }
 
@@ -2899,30 +2889,27 @@
                     categoryDiv.innerHTML = `<h4>${title}</h4>`;
 
                     ingredients.forEach(ingredient => {
-                        // CORREÇÃO: Puxa o status de visibilidade e disponibilidade em tempo real dos objetos globais
-                        const isVisible = ingredientVisibility[ingredient.id] !== false;
-                        const isAvailable = ingredientStatus[ingredient.id] !== false && isVisible;
-
-                        if (!isVisible) return; // Se não for visível, nem renderiza o item
+                        // CORREÇÃO: Verifica o status do ingrediente antes de renderizar
+                        if (extraVisibility[ingredient.id] === false) return; // Não renderiza se estiver invisível
+                        const isUnavailable = extraStatus[ingredient.id] === false;
 
                         const priceDisplay = ingredient.price > 0 ? `+ R$ ${ingredient.price.toFixed(2).replace('.', ',')}` : '';
                         const optionDiv = document.createElement('div');
-                        optionDiv.className = `ingredient-option ${!isAvailable ? 'opacity-50 cursor-not-allowed' : ''}`;
+                        optionDiv.className = `ingredient-option ${isUnavailable ? 'opacity-50 cursor-not-allowed' : ''}`;
                         
                         const existingExtra = currentPizzaExtrasState[activeScope]?.find(extra => extra.name === ingredient.name);
                         const quantity = existingExtra ? existingExtra.quantity : 0;
                         const ingredientLimit = ingredient.limit || 1;
-                        const disabledAttr = !isAvailable ? 'disabled' : '';
 
                         optionDiv.innerHTML = `
                              <div class="flex-grow">
-                                <span>${ingredient.name} ${!isAvailable ? '(Esgotado)' : ''}</span>
+                                <span>${ingredient.name} ${isUnavailable ? '(Esgotado)' : ''}</span>
                                 <span class="price ml-2">${priceDisplay}</span>
                             </div>
                             <div class="flex items-center space-x-3" data-name="${ingredient.name}" data-price="${ingredient.price}" data-limit="${ingredientLimit}">
-                                <button type="button" class="quantity-btn minus-btn bg-gray-200 w-7 h-7 rounded-full flex items-center justify-center text-lg font-bold" ${disabledAttr}>-</button>
+                                <button type="button" class="quantity-btn minus-btn bg-gray-200 w-7 h-7 rounded-full flex items-center justify-center text-lg font-bold" ${isUnavailable ? 'disabled' : ''}>-</button>
                                 <span class="quantity-display font-bold text-lg w-4 text-center">${quantity}</span>
-                                <button type="button" class="quantity-btn plus-btn bg-gray-200 w-7 h-7 rounded-full flex items-center justify-center text-lg font-bold" ${disabledAttr}>+</button>
+                                <button type="button" class="quantity-btn plus-btn bg-gray-200 w-7 h-7 rounded-full flex items-center justify-center text-lg font-bold" ${isUnavailable ? 'disabled' : ''}>+</button>
                             </div>
                         `;
                         if (quantity > 0) optionDiv.classList.add('selected');
@@ -3450,9 +3437,8 @@
             });
 
             pizzaExtrasIngredientsContainer.addEventListener('click', (e) => {
-                const target = e.target;
+                 const target = e.target;
                 if (target.classList.contains('quantity-btn')) {
-                    if (target.disabled) return;
                     const orderIndex = parseInt(pizzaExtrasBuilderModal.dataset.orderIndex);
                     handleExtraQuantityChange(target, orderIndex);
                 }
