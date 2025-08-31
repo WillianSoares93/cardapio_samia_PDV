@@ -1231,13 +1231,26 @@
                         item.acceptsExtras = itemExtrasStatus[item.id] === undefined ? defaultExtras : itemExtrasStatus[item.id];
                     });
                 });
+                // CORREÇÃO: Lógica de atualização em tempo real para os adicionais
                 onSnapshot(doc(db, "config", "ingredient_status"), (doc) => {
                     ingredientStatus = doc.exists() ? doc.data() : {};
-                    updateUI();
+                    // Se o modal de adicionais estiver aberto, atualiza sua visualização
+                    if (pizzaExtrasBuilderModal.style.display === 'flex') {
+                        const orderIndex = parseInt(pizzaExtrasBuilderModal.dataset.orderIndex);
+                        if (!isNaN(orderIndex)) {
+                            renderPizzaExtrasList(orderIndex);
+                        }
+                    }
                 });
                 onSnapshot(doc(db, "config", "ingredient_visibility"), (doc) => {
                     ingredientVisibility = doc.exists() ? doc.data() : {};
-                    updateUI();
+                    // Se o modal de adicionais estiver aberto, atualiza sua visualização
+                    if (pizzaExtrasBuilderModal.style.display === 'flex') {
+                        const orderIndex = parseInt(pizzaExtrasBuilderModal.dataset.orderIndex);
+                        if (!isNaN(orderIndex)) {
+                            renderPizzaExtrasList(orderIndex);
+                        }
+                    }
                 });
             }
 
@@ -2867,23 +2880,30 @@
                     categoryDiv.innerHTML = `<h4>${title}</h4>`;
 
                     ingredients.forEach(ingredient => {
+                        // CORREÇÃO: Puxa o status de visibilidade e disponibilidade em tempo real dos objetos globais
+                        const isVisible = ingredientVisibility[ingredient.id] !== false;
+                        const isAvailable = ingredientStatus[ingredient.id] !== false && isVisible;
+
+                        if (!isVisible) return; // Se não for visível, nem renderiza o item
+
                         const priceDisplay = ingredient.price > 0 ? `+ R$ ${ingredient.price.toFixed(2).replace('.', ',')}` : '';
                         const optionDiv = document.createElement('div');
-                        optionDiv.className = 'ingredient-option';
+                        optionDiv.className = `ingredient-option ${!isAvailable ? 'opacity-50 cursor-not-allowed' : ''}`;
                         
                         const existingExtra = currentPizzaExtrasState[activeScope]?.find(extra => extra.name === ingredient.name);
                         const quantity = existingExtra ? existingExtra.quantity : 0;
                         const ingredientLimit = ingredient.limit || 1;
+                        const disabledAttr = !isAvailable ? 'disabled' : '';
 
                         optionDiv.innerHTML = `
                              <div class="flex-grow">
-                                <span>${ingredient.name}</span>
+                                <span>${ingredient.name} ${!isAvailable ? '(Esgotado)' : ''}</span>
                                 <span class="price ml-2">${priceDisplay}</span>
                             </div>
                             <div class="flex items-center space-x-3" data-name="${ingredient.name}" data-price="${ingredient.price}" data-limit="${ingredientLimit}">
-                                <button type="button" class="quantity-btn minus-btn bg-gray-200 w-7 h-7 rounded-full flex items-center justify-center text-lg font-bold">-</button>
+                                <button type="button" class="quantity-btn minus-btn bg-gray-200 w-7 h-7 rounded-full flex items-center justify-center text-lg font-bold" ${disabledAttr}>-</button>
                                 <span class="quantity-display font-bold text-lg w-4 text-center">${quantity}</span>
-                                <button type="button" class="quantity-btn plus-btn bg-gray-200 w-7 h-7 rounded-full flex items-center justify-center text-lg font-bold">+</button>
+                                <button type="button" class="quantity-btn plus-btn bg-gray-200 w-7 h-7 rounded-full flex items-center justify-center text-lg font-bold" ${disabledAttr}>+</button>
                             </div>
                         `;
                         if (quantity > 0) optionDiv.classList.add('selected');
@@ -3411,8 +3431,9 @@
             });
 
             pizzaExtrasIngredientsContainer.addEventListener('click', (e) => {
-                 const target = e.target;
+                const target = e.target;
                 if (target.classList.contains('quantity-btn')) {
+                    if (target.disabled) return;
                     const orderIndex = parseInt(pizzaExtrasBuilderModal.dataset.orderIndex);
                     handleExtraQuantityChange(target, orderIndex);
                 }
