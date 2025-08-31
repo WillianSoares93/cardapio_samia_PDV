@@ -83,9 +83,9 @@ function parseCsvData(csvText, type) {
         'adicionais': 'name', 'limite adicionais': 'limit', 'limite categoria': 'categoryLimit'
     };
     
-    // CORREÇÃO: Garante que a coluna de ID dos adicionais seja mapeada corretamente,
-    // independentemente do nome exato da coluna na planilha ('id item (único)' ou 'id intem').
-    if (type === 'pizza_ingredients') {
+    // CORREÇÃO: Garante que a coluna de ID dos ingredientes e adicionais seja mapeada corretamente,
+    // independentemente do nome exato da coluna na planilha.
+    if (type === 'pizza_ingredients' || type === 'burger_ingredients') {
         headerMapping['id item (único)'] = 'id';
         headerMapping['id intem'] = 'id';
     }
@@ -124,10 +124,23 @@ export default async (req, res) => {
     res.setHeader('Cache-Control', 's-maxage=5, stale-while-revalidate'); 
 
     try {
-        const fetchData = async (url) => {
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`Falha ao buscar dados de ${url}`);
-            return response.text();
+        // CORREÇÃO: Função de fetch mais robusta para não quebrar a API inteira se uma planilha falhar.
+        const fetchData = async (url, isCritical = false) => {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    const errorMsg = `Falha ao buscar dados de ${url}, status: ${response.status}`;
+                    if (isCritical) throw new Error(errorMsg);
+                    console.warn(`Aviso: ${errorMsg}. Usando dados vazios.`);
+                    return ''; // Retorna string vazia em caso de falha não crítica
+                }
+                return response.text();
+            } catch (error) {
+                const errorMsg = `Erro de rede ao buscar ${url}: ${error.message}`;
+                if (isCritical) throw new Error(errorMsg);
+                console.warn(`Aviso: ${errorMsg}. Usando dados vazios.`);
+                return ''; // Retorna string vazia em caso de erro de rede
+            }
         };
 
         const [
@@ -138,7 +151,7 @@ export default async (req, res) => {
             ingredientesPizzaCsv,
             contactCsv
         ] = await Promise.all([
-            fetchData(CARDAPIO_CSV_URL),
+            fetchData(CARDAPIO_CSV_URL, true), // O cardápio principal é crítico
             fetchData(PROMOCOES_CSV_URL),
             fetchData(DELIVERY_FEES_CSV_URL),
             fetchData(INGREDIENTES_HAMBURGUER_CSV_URL),
@@ -197,3 +210,4 @@ export default async (req, res) => {
         res.status(500).json({ error: `Erro interno no servidor: ${error.message}` });
     }
 };
+
