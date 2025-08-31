@@ -83,8 +83,10 @@ function parseCsvData(csvText, type) {
         // Mapeamento para Ingredientes da Pizza
         'adicionais': 'name', 'limite adicionais': 'limit', 'limite categoria': 'categoryLimit'
     };
+     // CORREÇÃO: Garante que o ID dos adicionais (pizza_ingredients) seja mapeado corretamente.
      if (type === 'pizza_ingredients') {
         headerMapping['id intem'] = 'id';
+        headerMapping['id item (único)'] = 'id'; // Garante que ambas variações de nome de coluna sejam reconhecidas.
     }
 
 
