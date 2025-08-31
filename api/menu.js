@@ -180,6 +180,7 @@ export default async (req, res) => {
             const itemExtrasRef = doc(db, "config", "item_extras_status");
             const pizzaHalfStatusRef = doc(db, "config", "pizza_half_status");
             
+            // CORREÇÃO FINAL: Adiciona as variáveis que faltavam para receber os resultados do Promise.all.
             const [
                 itemStatusSnap, 
                 itemVisibilitySnap,
@@ -189,7 +190,7 @@ export default async (req, res) => {
                  getDoc(itemStatusRef),
                  getDoc(itemVisibilityRef),
                  getDoc(itemExtrasRef),
-                 getDoc(pizzaHalfStatusSnap)
+                 getDoc(pizzaHalfStatusRef)
             ]);
             
             unavailableItems = itemStatusSnap.exists() ? itemStatusSnap.data() : {};
