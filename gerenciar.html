@@ -412,10 +412,9 @@
             row.className = 'availability-row flex items-center justify-between p-3 border rounded-md bg-gray-50';
             row.dataset.name = item.name.toLowerCase();
             row.dataset.category = item.category || 'Outros';
-            row.dataset.itemId = item.id; // CORREÇÃO: Garantir que o ID esteja presente
+            row.dataset.itemId = item.id;
             row.dataset.type = type;
 
-            // CORREÇÃO: Tratar ingredientes e extras da mesma forma
             const isIngredientOrExtra = type === 'ingredient' || type === 'extra';
             const currentStatus = isIngredientOrExtra ? ingredientStatus : itemStatus;
             const currentVisibility = isIngredientOrExtra ? ingredientVisibility : itemVisibility;
@@ -510,7 +509,6 @@
         async function updateStatus(id, type, { isAvailable, isVisible, acceptsExtras, allowsHalf }) {
             try {
                 if(!id) {
-                    // CORREÇÃO: Lança o erro para ser capturado e exibido no console.
                     throw new Error("ID do item está vazio. A operação não pode ser concluída.");
                 }
 
@@ -551,7 +549,6 @@
 
             const type = activePanel.id.split('-')[0]; // 'item', 'ingredient', or 'extra'
             
-            // CORREÇÃO: Validar que os elementos de filtro existem antes de acessá-los
             const searchInput = document.getElementById(`search-${type}`);
             const categorySelect = document.getElementById(`${type}-category-select`);
             const activeStatusBtn = document.querySelector(`#${type}-status-filters .bg-white`);
@@ -565,7 +562,6 @@
                 const nameMatch = row.dataset.name.includes(searchTerm);
                 const categoryMatch = selectedCategory === 'Todos' || row.dataset.category === selectedCategory;
 
-                // CORREÇÃO: Unificar a lógica de status para ingredientes e extras
                 const isIngredientOrExtra = type === 'ingredient' || type === 'extra';
                 const currentStatusDb = isIngredientOrExtra ? ingredientStatus : itemStatus;
                 const currentVisibilityDb = isIngredientOrExtra ? ingredientVisibility : itemVisibility;
