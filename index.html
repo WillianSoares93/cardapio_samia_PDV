@@ -2412,11 +2412,16 @@
             }
 
             function displayDrinkSuggestionModal() {
-                suggestedDrinksList.innerHTML = ''; 
-                const availableDrinks = allMenuData.filter(item => item.category === 'bebidas' && item.available);
+                suggestedDrinksList.innerHTML = '';
+                // MODIFICAÇÃO: Filtra bebidas usando os objetos de status em tempo real
+                const availableDrinks = allMenuData.filter(item => 
+                    item.category === 'bebidas' && 
+                    itemVisibility[item.id] !== false && 
+                    unavailableItems[item.id] !== false
+                );
 
                 if (availableDrinks.length > 0) {
-                    const drinksToSuggest = availableDrinks; 
+                    const drinksToSuggest = availableDrinks;
                     drinksToSuggest.forEach(drink => {
                         const drinkItemHtml = `
                             <div class="suggested-drink-item">
@@ -2440,17 +2445,17 @@
                                     price: item.basePrice,
                                     description: item.description,
                                     category: item.category
-                                }, this, null); 
-                                updateDrinkSuggestionButtons(); 
+                                }, this, null);
+                                updateDrinkSuggestionButtons();
                             }
                         });
                     });
                 } else {
                     suggestedDrinksList.innerHTML = '<p class="text-gray-500">Nenhuma bebida disponível para sugestão no momento.</p>';
                 }
-                drinkSuggestionModal.style.display = 'flex'; 
+                drinkSuggestionModal.style.display = 'flex';
                 updatePromotionButtonVisibility();
-                updateDrinkSuggestionButtons(); 
+                updateDrinkSuggestionButtons();
             }
 
             function updateDrinkSuggestionButtons() {
@@ -3515,4 +3520,3 @@
     </script>
 </body>
 </html>
-
