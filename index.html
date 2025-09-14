@@ -2419,21 +2419,26 @@
 
             function displayDrinkSuggestionModal() {
                 suggestedDrinksList.innerHTML = '';
-                // MODIFICAÇÃO: Filtra bebidas usando os objetos de status em tempo real
-                const availableDrinks = allMenuData.filter(item => 
+                const visibleDrinks = allMenuData.filter(item => 
                     item.category === 'bebidas' && 
-                    itemVisibility[item.id] !== false && 
-                    unavailableItems[item.id] !== false
+                    itemVisibility[item.id] !== false
                 );
 
-                if (availableDrinks.length > 0) {
-                    const drinksToSuggest = availableDrinks;
-                    drinksToSuggest.forEach(drink => {
+                if (visibleDrinks.length > 0) {
+                    visibleDrinks.forEach(drink => {
+                        const isUnavailable = unavailableItems[drink.id] === false;
+                        
+                        const buttonHtml = isUnavailable
+                            ? `<button class="bg-gray-400 text-white px-3 py-1 rounded-md text-sm cursor-not-allowed" disabled>Esgotado</button>`
+                            : `<button class="add-suggested-drink-btn" data-item-id="${drink.id}">Adicionar</button>`;
+                        
+                        const itemClass = isUnavailable ? 'opacity-60' : '';
+
                         const drinkItemHtml = `
-                            <div class="suggested-drink-item">
+                            <div class="suggested-drink-item ${itemClass}">
                                 <span class="drink-name">${drink.name}</span>
                                 <span class="drink-price">R$ ${drink.basePrice.toFixed(2).replace('.', ',')}</span>
-                                <button class="add-suggested-drink-btn" data-item-id="${drink.id}">Adicionar</button>
+                                ${buttonHtml}
                             </div>
                         `;
                         suggestedDrinksList.insertAdjacentHTML('beforeend', drinkItemHtml);
@@ -2459,7 +2464,10 @@
                 } else {
                     suggestedDrinksList.innerHTML = '<p class="text-gray-500">Nenhuma bebida disponível para sugestão no momento.</p>';
                 }
-                drinkSuggestionModal.style.display = 'flex';
+
+                if (drinkSuggestionModal.style.display !== 'flex') {
+                    drinkSuggestionModal.style.display = 'flex';
+                }
                 updatePromotionButtonVisibility();
                 updateDrinkSuggestionButtons();
             }
