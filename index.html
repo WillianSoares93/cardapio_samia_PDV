@@ -1217,10 +1217,16 @@
                 onSnapshot(doc(db, "config", "item_status"), (doc) => {
                     unavailableItems = doc.exists() ? doc.data() : {};
                     updateUI();
+                    if (drinkSuggestionModal.style.display === 'flex') {
+                        displayDrinkSuggestionModal();
+                    }
                 });
                 onSnapshot(doc(db, "config", "item_visibility"), (doc) => {
                     itemVisibility = doc.exists() ? doc.data() : {};
                     updateUI();
+                    if (drinkSuggestionModal.style.display === 'flex') {
+                        displayDrinkSuggestionModal();
+                    }
                 });
                 onSnapshot(doc(db, "config", "pizza_half_status"), (doc) => {
                     pizzaHalfStatus = doc.exists() ? doc.data() : {};
@@ -3520,3 +3526,4 @@
     </script>
 </body>
 </html>
+
