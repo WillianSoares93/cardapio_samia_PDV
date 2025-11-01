@@ -1,0 +1,23 @@
+{
+  "name": "catalogo_pizzaria-main",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google-cloud/speech": "^7.2.0",
+    "firebase": "^12.1.0",
+    "firebase-admin": "^12.1.0",
+    "form-data": "^4.0.0",
+    "google-auth-library": "^9.11.0",
+    "google-spreadsheet": "^4.1.1",
+    "googleapis": "^140.0.1",
+    "node-fetch": "^3.3.2"
+  }
+}
