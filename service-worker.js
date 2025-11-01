@@ -1,7 +1,7 @@
 // service-worker.js
 
 // É importante mudar a versão do cache para que o navegador saiba que precisa atualizar.
-const CACHE_NAME = 'samia-1'; // Versão incrementada
+const CACHE_NAME = 'samia-135'; // Versão incrementada
 
 // Lista de arquivos essenciais para o funcionamento offline do app.
 // Removida a URL do Google Fonts para maior robustez.
