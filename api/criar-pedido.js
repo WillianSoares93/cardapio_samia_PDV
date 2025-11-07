@@ -534,7 +534,20 @@ export default async function handler(req, res) {
                 price: Number(item.price || 0),
                 type: item.type || 'full',
                 // Salva 'ingredients' se existir (Hambúrguer ou Pizza vindo do frontend novo)
-                ...(item.ingredients && { ingredients: item.ingredients.map(ing => ({ name: ing.name, price: Number(ing.price || 0), quantity: Number(ing.quantity || 1) })) }),
+                // ========================================================================
+                // INÍCIO DA ALTERAÇÃO
+                // ========================================================================
+                // A linha antiga estava descartando a propriedade 'placement'.
+                // A nova linha garante que 'placement' (e outros campos futuros) sejam preservados.
+                ...(item.ingredients && { ingredients: item.ingredients.map(ing => ({ 
+                    name: ing.name, 
+                    price: Number(ing.price || 0), 
+                    quantity: Number(ing.quantity || 1),
+                    placement: ing.placement || null // <--- ALTERAÇÃO ADICIONADA AQUI
+                })) }),
+                // ========================================================================
+                // FIM DA ALTERAÇÃO
+                // ========================================================================
                 // Salva 'extras' se existir (Fallback ou se o frontend enviar ambos)
                 ...(item.extras && { extras: item.extras.map(ext => ({ name: ext.name, price: Number(ext.price || 0), quantity: Number(ext.quantity || 1), placement: ext.placement })) }),
                 ...(item.originalItem && { originalItem: item.originalItem }),
