@@ -595,7 +595,6 @@ const firebaseConfig = {
                 }
             }
         }
-
         openCashForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const initialValue = parseFloat(document.getElementById('initial-value').value);
@@ -1263,10 +1262,66 @@ const firebaseConfig = {
                 newTagHtml = '<div class="new-order-tag animate-pulse">Novo</div>';
             }
 
-            // Mapear itens com segurança, tratando casos onde item.price pode não existir
-            let itemsHtml = orderItems.map(item =>
-                `<li class="flex justify-between text-sm"><span>${item.name || 'Item desconhecido'}</span><span class="font-medium">R$ ${parseFloat(item.price || 0).toFixed(2).replace('.', ',')}</span></li>`
-            ).join('');
+            // <!--
+            // ========================================================================
+            // INÍCIO DA ALTERAÇÃO - createOrderCard (PDV Card Display)
+            // ========================================================================
+            //
+            // Lógica atualizada para ler 'item.extras' (do balcão) E
+            // 'item.ingredients' (do cardápio online) para mostrar os adicionais,
+            // garantindo que o 'placement' seja lido de AMBOS.
+            //
+            // ========================================================================
+            // -->
+            let itemsHtml = orderItems.map(item => {
+                let itemDetails = '';
+                
+                // 1. Pega adicionais (pizzas/itens) do Balcão (campo 'extras')
+                if (item.extras && item.extras.length > 0) {
+                    itemDetails += '<ul class="text-xs text-gray-500 pl-4 list-disc">';
+                    item.extras.forEach(extra => {
+                        const quantityText = (extra.quantity && extra.quantity > 1) ? ` (x${extra.quantity})` : '';
+                        const placementText = extra.placement ? ` (${extra.placement})` : ''; // Lê o placement
+                        itemDetails += `<li>+ ${extra.name}${quantityText}${placementText}</li>`;
+                    });
+                    itemDetails += '</ul>';
+                }
+
+                // 2. Pega ingredientes (Burger Custom OU Adicionais de Pizza do Cardápio Online)
+                if (item.ingredients && item.ingredients.length > 0) {
+                    if (item.type === 'custom_burger') {
+                        // Trata como ingredientes de hambúrguer (remoções)
+                        itemDetails += '<ul class="text-xs text-gray-500 pl-4 list-disc">';
+                        item.ingredients.forEach(ing => {
+                            const quantityText = (ing.quantity && ing.quantity > 1) ? ` (x${ing.quantity})` : '';
+                            itemDetails += `<li>- ${ing.name}${quantityText}</li>`;
+                        });
+                        itemDetails += '</ul>';
+                    } else {
+                        // Trata como adicionais de pizza (adições) - do Cardápio Online (campo 'ingredients')
+                        itemDetails += '<ul class="text-xs text-gray-500 pl-4 list-disc">';
+                        item.ingredients.forEach(extra => {
+                            const quantityText = (extra.quantity && extra.quantity > 1) ? ` (x${extra.quantity})` : '';
+                            const placementText = extra.placement ? ` (${extra.placement})` : ''; // <-- CORREÇÃO: Lê o placement aqui
+                            itemDetails += `<li>+ ${extra.name}${quantityText}${placementText}</li>`; // <-- CORREÇÃO: Adiciona o placementText
+                        });
+                        itemDetails += '</ul>';
+                    }
+                }
+
+                return `<li class="text-sm">
+                            <div class="flex justify-between">
+                                <span>${item.name || 'Item desconhecido'}</span>
+                                <span class="font-medium">R$ ${parseFloat(item.price || 0).toFixed(2).replace('.', ',')}</span>
+                            </div>
+                            ${itemDetails}
+                        </li>`;
+            }).join('');
+            // <!--
+            // ========================================================================
+            // FIM DA ALTERAÇÃO - createOrderCard
+            // ========================================================================
+            // -->
 
             const createdAtTimestamp = order.criadoEm && order.criadoEm.toMillis ? order.criadoEm.toMillis() : Date.now();
             const statusChangedAtTimestamp = order.statusChangedAt && order.statusChangedAt.toMillis ? order.statusChangedAt.toMillis() : createdAtTimestamp;
@@ -1336,8 +1391,6 @@ const firebaseConfig = {
             } else {
                  addressHtml = `<p class="text-xs text-red-500">Erro: Endereço não encontrado.</p>`;
             }
-
-
             card.innerHTML = `
                 ${newTagHtml}
                 <div class="card-header flex justify-between items-start cursor-pointer p-4">
@@ -1361,8 +1414,8 @@ const firebaseConfig = {
                             <div class="flex justify-between items-center mb-2">
                                 <span class="text-xs font-medium text-gray-500">Criado às ${new Date(createdAtTimestamp).toLocaleTimeString('pt-BR')}</span>
                                 <div class="flex items-center space-x-2">
-                                    <button data-id="${id}" class="print-btn text-gray-500" title="Imprimir Comanda Cozinha"><i class="fas fa-utensils"></i></button>
-                                    <button data-id="${id}" class="print-btn text-gray-500" title="Imprimir Recibo Cliente"><i class="fas fa-receipt"></i></button>
+                                    <button data-id="${id}" data-type="kitchen" class="print-btn text-gray-500" title="Imprimir Comanda Cozinha"><i class="fas fa-utensils"></i></button>
+                                    <button data-id="${id}" data-type="client" class="print-btn text-gray-500" title="Imprimir Recibo Cliente"><i class="fas fa-receipt"></i></button>
                                     ${hasPhone ? `<button data-id="${id}" class="whatsapp-btn text-green-500" title="Confirmar Pedido no WhatsApp"><i class="fab fa-whatsapp"></i></button>` : ''}
                                     <button class="archive-btn text-green-500 hover:text-green-700 ${!finalStep ? 'opacity-50 cursor-not-allowed' : ''}" data-id="${id}" ${!finalStep ? 'disabled' : ''} title="Finalizar e Arquivar Pedido"><i class="fas fa-check-circle"></i></button>
                                     <button data-id="${id}" class="manage-btn text-blue-500" title="Editar Pedido"><i class="fas fa-edit"></i></button>
@@ -1381,21 +1434,72 @@ const firebaseConfig = {
 
             return card;
         }
-
-
         function createDetailedOrderCardHtml(order, id) {
              const createdAtTimestamp = order.criadoEm && order.criadoEm.toMillis ? order.criadoEm.toMillis() : Date.now();
              const statusChangedAtTimestamp = order.statusChangedAt && order.statusChangedAt.toMillis ? order.statusChangedAt.toMillis() : createdAtTimestamp;
              const orderType = identifyOrderType(order);
 
-             // **CORREÇÃO:** Garantir que order.itens seja um array antes de usar map
+            // <!--
+            // ========================================================================
+            // INÍCIO DA ALTERAÇÃO - createDetailedOrderCardHtml (Modal Detalhes da Mesa)
+            // ========================================================================
+            //
+            // Lógica atualizada para ler 'item.extras' (do balcão) E
+            // 'item.ingredients' (do cardápio online) para mostrar os adicionais
+            // no modal de gerenciamento de mesa.
+            //
+            // ========================================================================
+            // -->
              const orderItems = Array.isArray(order.itens) ? order.itens : [];
-             let itemsHtml = orderItems.map(item => `
-                <li class="flex justify-between text-sm">
-                    <span>${item.name || 'Item desconhecido'}</span>
-                    <span class="font-medium">R$ ${parseFloat(item.price || 0).toFixed(2).replace('.', ',')}</span>
-                </li>
-             `).join('');
+             let itemsHtml = orderItems.map(item => {
+                let itemDetails = '';
+                
+                // 1. Pega adicionais (pizzas/itens) do Balcão (campo 'extras')
+                if (item.extras && item.extras.length > 0) {
+                    itemDetails += '<ul class="text-xs text-gray-500 pl-4 list-disc">';
+                    item.extras.forEach(extra => {
+                        const quantityText = (extra.quantity && extra.quantity > 1) ? ` (x${extra.quantity})` : '';
+                        const placementText = extra.placement ? ` (${extra.placement})` : '';
+                        itemDetails += `<li>+ ${extra.name}${quantityText}${placementText}</li>`;
+                    });
+                    itemDetails += '</ul>';
+                }
+
+                // 2. Pega ingredientes (Burger Custom OU Adicionais de Pizza do Cardápio Online)
+                if (item.ingredients && item.ingredients.length > 0) {
+                    if (item.type === 'custom_burger') {
+                        // Trata como ingredientes de hambúrguer (remoções)
+                        itemDetails += '<ul class="text-xs text-gray-500 pl-4 list-disc">';
+                        item.ingredients.forEach(ing => {
+                            const quantityText = (ing.quantity && ing.quantity > 1) ? ` (x${ing.quantity})` : '';
+                            itemDetails += `<li>- ${ing.name}${quantityText}</li>`;
+                        });
+                        itemDetails += '</ul>';
+                    } else {
+                        // Trata como adicionais de pizza (adições) - do Cardápio Online (campo 'ingredients')
+                        itemDetails += '<ul class="text-xs text-gray-500 pl-4 list-disc">';
+                        item.ingredients.forEach(extra => {
+                            const quantityText = (extra.quantity && extra.quantity > 1) ? ` (x${extra.quantity})` : '';
+                            const placementText = extra.placement ? ` (${extra.placement})` : ''; // <-- CORREÇÃO: Lê o placement aqui
+                            itemDetails += `<li>+ ${extra.name}${quantityText}${placementText}</li>`; // <-- CORREÇÃO: Adiciona o placementText
+                        });
+                        itemDetails += '</ul>';
+                    }
+                }
+
+                return `<li class="text-sm">
+                            <div class="flex justify-between">
+                                <span>${item.name || 'Item desconhecido'}</span>
+                                <span class="font-medium">R$ ${parseFloat(item.price || 0).toFixed(2).replace('.', ',')}</span>
+                            </div>
+                            ${itemDetails}
+                        </li>`;
+             }).join('');
+            // <!--
+            // ========================================================================
+            // FIM DA ALTERAÇÃO - createDetailedOrderCardHtml
+            // ========================================================================
+            // -->
 
              let buttonHtml = '';
 
@@ -1753,19 +1857,44 @@ const firebaseConfig = {
             printOrderContent(order, id, type);
         }
 
+        // <!--
+        // ========================================================================
+        // INÍCIO DA ALTERAÇÃO - Função printOrderContent
+        // ========================================================================
+        //
+        // Lógica da função generateItemHtml atualizada para ler
+        // 1. 'item.extras' (Balcão)
+        // 2. 'item.ingredients' (Cardápio Online), verificando se é burger ou pizza.
+        //
+        // ========================================================================
+        // -->
         function printOrderContent(order, id, type) {
+            // *** INÍCIO DA CORREÇÃO DE IMPRESSÃO ***
+            // Estes estilos forçam a impressora térmica a usar o modo "rolo"
+            // e definem a largura correta (80mm ou 58mm).
             const styles = `
                 <style>
                     @media print {
-                        @page { margin: 0; size: 80mm auto; }
-                        body {
-                            width: 80mm;
+                        @page { 
+                            margin: 0; 
+                            /* Tenta forçar 80mm, ajuste para 58mm se sua impressora for menor */
+                            size: 80mm auto; 
+                        } 
+                        html, body {
+                            /* Largura da impressora térmica */
+                            width: 80mm !important; 
+                            /* Altura automática para conteúdo contínuo */
+                            height: auto !important; 
+                            min-height: initial !important; 
                             margin: 0;
-                            padding: 5mm;
+                            /* Margem interna do papel */
+                            padding: 5mm; 
                             font-family: 'Courier New', Courier, monospace;
                             font-size: 10pt;
                             color: #000;
                             background-color: #fff;
+                            /* Garante que nada seja cortado */
+                            overflow: visible !important; 
                         }
                         * {
                             font-family: 'Courier New', Courier, monospace;
@@ -1778,16 +1907,64 @@ const firebaseConfig = {
                         li { margin-bottom: 2px; }
                         .item-line { display: flex; justify-content: space-between; }
                         .item-details { padding-left: 15px; font-size: 9pt; color: #333; }
+                        .item-details strong { font-size: 9pt; color: #000; } 
                         hr { border: none; border-top: 1px dashed #000; margin: 10px 0; }
                         .text-right { text-align: right; }
                         .font-bold { font-weight: bold; }
                     }
                 </style>
             `;
+            // *** FIM DA CORREÇÃO DE IMPRESSÃO ***
 
             let printContent = '';
-            // **CORREÇÃO:** Garantir que order.itens seja um array
+            // Garantir que order.itens seja um array
             const orderItems = Array.isArray(order.itens) ? order.itens : [];
+
+            // Função helper para gerar o HTML de um item (para evitar repetição)
+            const generateItemHtml = (item, includePrice = false) => {
+                let itemString = '';
+                
+                if (includePrice) {
+                    itemString = `<li class="item-line"><span>${item.name || 'Item desconhecido'}</span><span>R$${parseFloat(item.price || 0).toFixed(2).replace('.', ',')}</span></li>`;
+                } else {
+                    itemString = `<li><strong>1x</strong> ${item.name || 'Item desconhecido'}</li>`;
+                }
+                
+                // --- INÍCIO DA CORREÇÃO ---
+        
+                // 1. Adicionais (pizzas/itens) do Balcão (campo 'extras')
+                if (item.extras && item.extras.length > 0) {
+                    itemString += `<ul>${item.extras.map(extra => {
+                        const quantityText = (extra.quantity && extra.quantity > 1) ? ` (x${extra.quantity})` : '';
+                        const placementText = extra.placement ? ` (${extra.placement})` : ''; // Lê o placement
+                        return `<li class="item-details"><strong>+ ${extra.name}${quantityText}${placementText}</strong></li>`;
+                    }).join('')}</ul>`;
+                }
+                
+                // 2. Ingredientes (Burger Custom OU Adicionais de Pizza do Cardápio Online)
+                if (item.ingredients && item.ingredients.length > 0) {
+                    if (item.type === 'custom_burger') {
+                         // Trata como ingredientes de hambúrguer (remoções)
+                         itemString += `<ul>${item.ingredients.map(ing => {
+                             const quantityText = (ing.quantity && ing.quantity > 1) ? ` (x${ing.quantity})` : '';
+                             return `<li class="item-details"><strong>- ${ing.name}${quantityText}</strong></li>`;
+                         }).join('')}</ul>`;
+                    } else {
+                        // Trata como adicionais de pizza (adições) - do Cardápio Online
+                        itemString += `<ul>${item.ingredients.map(extra => {
+                            const quantityText = (extra.quantity && extra.quantity > 1) ? ` (x${extra.quantity})` : '';
+                            // AQUI ESTÁ A CORREÇÃO: Lemos o 'placement' do array 'ingredients'
+                            const placementText = extra.placement ? ` (${extra.placement})` : ''; 
+                            return `<li class="item-details"><strong>+ ${extra.name}${quantityText}${placementText}</strong></li>`;
+                        }).join('')}</ul>`;
+                    }
+                }
+                // --- FIM DA CORREÇÃO ---
+                
+                return itemString;
+            };
+
+            // Agrupar itens por categoria para AMBAS as impressões
             const itemsByCategory = orderItems.reduce((acc, item) => {
                 const category = item.category || 'Outros';
                 if (!acc[category]) acc[category] = [];
@@ -1795,66 +1972,36 @@ const firebaseConfig = {
                 return acc;
             }, {});
 
+
             if (type === 'kitchen') {
+                // Lógica da Cozinha (COM categorias, SEM preços)
                 let kitchenHtml = '';
                 for (const category in itemsByCategory) {
                     kitchenHtml += `<h2>${category.toUpperCase()}</h2><ul>`;
-                    kitchenHtml += itemsByCategory[category].map(item => {
-                        let itemString = `<li><strong>1x</strong> ${item.name || 'Item desconhecido'}</li>`; // Add fallback
-                        if (item.extras && item.extras.length > 0) {
-                            itemString += `<ul>${item.extras.map(extra => {
-                                const quantityText = (extra.quantity && extra.quantity > 1) ? ` (x${extra.quantity})` : '';
-                                return `<li class="item-details">+ ${extra.name}${quantityText} (${extra.placement})</li>`;
-                            }).join('')}</ul>`;
-                        }
-                        if (item.type === 'custom_burger' && item.ingredients && item.ingredients.length > 0) {
-                             itemString += `<ul>${item.ingredients.map(ing => {
-                                 const quantityText = (ing.quantity && ing.quantity > 1) ? ` (x${ing.quantity})` : '';
-                                 return `<li class="item-details">- ${ing.name}${quantityText}</li>`;
-                             }).join('')}</ul>`;
-                        }
-                        return itemString;
-                    }).join('');
+                    kitchenHtml += itemsByCategory[category].map(item => generateItemHtml(item, false)).join(''); // false = sem preço
                     kitchenHtml += '</ul>';
                 }
 
-                // **CORREÇÃO:** Usar optional chaining para endereco
                 printContent = `
                     <h1>COMANDA COZINHA</h1>
                     <p><strong>Pedido:</strong> #${id.substring(0, 5)}</p>
                     <p><strong>Cliente:</strong> ${order?.endereco?.clientName || 'N/A'}</p>
-                    ${order?.endereco?.telefone ? `<p><strong>Contato:</strong> ${order.endereco.telefone}</p>` : ''}
                     <hr>
                     ${kitchenHtml}
                     ${order.observacao ? `<hr><h2>OBSERVAÇÕES</h2><p>${order.observacao}</p>` : ''}
                 `;
             } else { // type === 'client'
+                // Lógica do Cliente (COM categorias, COM preços)
                 let clientItemsHtml = '';
                 for (const category in itemsByCategory) {
                      clientItemsHtml += `<h2>${category.toUpperCase()}</h2><ul>`;
-                     clientItemsHtml += itemsByCategory[category].map(item => {
-                        let itemString = `<li class="item-line"><span>${item.name || 'Item desconhecido'}</span><span>R$${parseFloat(item.price || 0).toFixed(2).replace('.', ',')}</span></li>`; // Add fallback
-                        if (item.extras && item.extras.length > 0) {
-                            itemString += `<ul>${item.extras.map(extra => {
-                                const quantityText = (extra.quantity && extra.quantity > 1) ? ` (x${extra.quantity})` : '';
-                                return `<li class="item-details">+ ${extra.name}${quantityText} (${extra.placement})</li>`;
-                            }).join('')}</ul>`;
-                        }
-                        if (item.type === 'custom_burger' && item.ingredients && item.ingredients.length > 0) {
-                             itemString += `<ul>${item.ingredients.map(ing => {
-                                 const quantityText = (ing.quantity && ing.quantity > 1) ? ` (x${ing.quantity})` : '';
-                                 return `<li class="item-details">- ${ing.name}${quantityText}</li>`;
-                             }).join('')}</ul>`;
-                        }
-                        return itemString;
-                    }).join('');
-                    clientItemsHtml += '</ul>';
+                     clientItemsHtml += itemsByCategory[category].map(item => generateItemHtml(item, true)).join(''); // true = com preço
+                     clientItemsHtml += '</ul>';
                 }
 
                 let paymentDetailsHtml = '';
                 if (order.pagamento) {
                     let paymentText = '', changeText = '';
-                     // **CORREÇÃO:** Usar optional chaining para order.total e finalTotal
                     const finalTotalValue = order?.total?.finalTotal ?? 0;
                     if (typeof order.pagamento === 'object' && order.pagamento.method === 'Dinheiro') {
                         paymentText = 'Dinheiro';
@@ -1867,7 +2014,6 @@ const firebaseConfig = {
                     paymentDetailsHtml = `<hr><p><strong>Pagamento: ${paymentText}</strong></p>${changeText}`;
                 }
 
-                // **CORREÇÃO:** Usar optional chaining para endereco e total
                 printContent = `
                     <h1>Sâmia Pizzaria</h1>
                     <p><strong>Pedido:</strong> #${id.substring(0, 5)}</p>
@@ -1888,27 +2034,48 @@ const firebaseConfig = {
                 `;
             }
 
-            let printFrame = document.getElementById('print-frame');
-            if (!printFrame) {
-                printFrame = document.createElement('iframe');
-                printFrame.id = 'print-frame';
-                printFrame.style.position = 'absolute';
-                printFrame.style.width = '0';
-                printFrame.style.height = '0';
-                printFrame.style.border = '0';
-                document.body.appendChild(printFrame);
+            // NOVA LÓGICA DE IMPRESSÃO (Substitui o iframe)
+            const printWindow = window.open('', '_blank', 'width=800,height=600');
+            if (!printWindow) {
+                showCustomAlert("Não foi possível abrir a janela de impressão. Verifique se o seu navegador está bloqueando pop-ups.");
+                return;
             }
+            
+            printWindow.document.write(`
+                <html>
+                    <head>
+                        <title>Imprimir Pedido ${id.substring(0, 5)}</title>
+                        ${styles}
+                    </head>
+                    <body>
+                        ${printContent}
+                    </body>
+                </html>
+            `);
+            
+            printWindow.document.close();
+            
+            // Espera o conteúdo ser totalmente carregado na nova janela
+            printWindow.onload = function() {
+                printWindow.focus(); // Foca na janela
+                printWindow.print(); // Abre a caixa de diálogo de impressão
+                printWindow.close(); // Fecha a janela após imprimir (ou cancelar)
+            };
 
-            const frameDoc = printFrame.contentWindow.document;
-            frameDoc.open();
-            frameDoc.write(styles + printContent);
-            frameDoc.close();
-
+            // Fallback caso o onload não dispare (comum em alguns navegadores)
             setTimeout(() => {
-                printFrame.contentWindow.focus();
-                printFrame.contentWindow.print();
-            }, 100);
+                if (!printWindow.closed) {
+                    printWindow.focus();
+                    printWindow.print();
+                    printWindow.close();
+                }
+            }, 500);
         }
+        // <!--
+        // ========================================================================
+        // FIM DA ALTERAÇÃO
+        // ========================================================================
+        // -->
 
         async function openCloseCashModal() {
             if (!currentCashRegister) {
@@ -1919,7 +2086,6 @@ const firebaseConfig = {
             try {
                 const deliveredOrdersQuery = query(collection(db, "pedidos"), where("status", "in", ["Entregue", "Fechado"]));
                 const querySnapshot = await getDocs(deliveredOrdersQuery);
-
                 let totalCash = 0, totalCard = 0, totalPix = 0;
                 let totalDelivery = 0, totalRetirada = 0, totalMesas = 0, totalDeliveryFees = 0;
 
@@ -1991,18 +2157,25 @@ const firebaseConfig = {
 
 
         function printCashClosure() {
+            // *** INÍCIO DA CORREÇÃO DE IMPRESSÃO ***
             const styles = `
                 <style>
                     @media print {
-                        @page { margin: 0; size: 80mm auto; }
-                        body {
-                            width: 80mm;
+                        @page { 
+                            margin: 0; 
+                            size: 80mm auto; /* Força 80mm */
+                        } 
+                        html, body {
+                            width: 80mm !important;
+                            height: auto !important;
+                            min-height: initial !important;
                             margin: 0;
                             padding: 5mm;
                             font-family: 'Courier New', Courier, monospace;
                             font-size: 10pt;
                             color: #000;
                             background-color: #fff;
+                            overflow: visible !important;
                         }
                         * {
                             font-family: 'Courier New', Courier, monospace;
@@ -2017,6 +2190,7 @@ const firebaseConfig = {
                     }
                 </style>
             `;
+            // *** FIM DA CORREÇÃO DE IMPRESSÃO ***
 
             const initial = document.getElementById('summary-initial').textContent;
             const delivery = document.getElementById('summary-delivery').textContent;
@@ -2059,26 +2233,26 @@ const firebaseConfig = {
                 <div class="line font-bold"><span>DIFERENÇA:</span><span>${difference}</span></div>
             `;
 
-            let printFrame = document.getElementById('print-frame');
-            if (!printFrame) {
-                printFrame = document.createElement('iframe');
-                printFrame.id = 'print-frame';
-                printFrame.style.position = 'absolute';
-                printFrame.style.width = '0';
-                printFrame.style.height = '0';
-                printFrame.style.border = '0';
-                document.body.appendChild(printFrame);
+            // Lógica de impressão com window.open()
+            const printWindow = window.open('', '_blank', 'width=800,height=600');
+            if (!printWindow) {
+                showCustomAlert("Não foi possível abrir a janela de impressão. Verifique se o seu navegador está bloqueando pop-ups.");
+                return;
             }
-
-            const frameDoc = printFrame.contentWindow.document;
-            frameDoc.open();
-            frameDoc.write(styles + printContent);
-            frameDoc.close();
-
+            printWindow.document.write(`<html><head><title>Fechamento de Caixa</title>${styles}</head><body>${printContent}</body></html>`);
+            printWindow.document.close();
+            printWindow.onload = function() {
+                printWindow.focus();
+                printWindow.print();
+                printWindow.close();
+            };
             setTimeout(() => {
-                printFrame.contentWindow.focus();
-                printFrame.contentWindow.print();
-            }, 100);
+                if (!printWindow.closed) {
+                    printWindow.focus();
+                    printWindow.print();
+                    printWindow.close();
+                }
+            }, 500);
         }
 
         document.querySelector('main').addEventListener('click', function(e) {
@@ -2603,7 +2777,54 @@ const firebaseConfig = {
 
         function formatWhatsappMessage(order) {
             // **CORREÇÃO:** Usar optional chaining e valores padrão
-            const itemsText = (Array.isArray(order.itens) ? order.itens : []).map(item => `  • ${item.name || 'Item'}: R$ ${parseFloat(item.price || 0).toFixed(2).replace('.', ',')}`).join('\n');
+            const itemsText = (Array.isArray(order.itens) ? order.itens : []).map(item => {
+                let itemString = `  • ${item.name || 'Item'}: R$ ${parseFloat(item.price || 0).toFixed(2).replace('.', ',')}`;
+                
+                // <!--
+                // ========================================================================
+                // INÍCIO DA ALTERAÇÃO - formatWhatsappMessage
+                // ========================================================================
+                //
+                // Aplicada a mesma lógica de 'extras' e 'ingredients' para a
+                // mensagem do WhatsApp, garantindo que o 'placement' seja lido de AMBOS.
+                //
+                // ========================================================================
+                // -->
+                
+                // 1. Pega adicionais (pizzas/itens) do Balcão (campo 'extras')
+                if (item.extras && item.extras.length > 0) {
+                    itemString += '\n' + item.extras.map(extra => {
+                        const quantityText = (extra.quantity && extra.quantity > 1) ? ` (x${extra.quantity})` : '';
+                        const placementText = extra.placement ? ` (${extra.placement})` : '';
+                        return `    *+ ${extra.name}${quantityText}${placementText}*`;
+                    }).join('\n');
+                }
+                
+                // 2. Pega ingredientes (Burger Custom OU Adicionais de Pizza do Cardápio Online)
+                if (item.ingredients && item.ingredients.length > 0) {
+                    if (item.type === 'custom_burger') {
+                         // Trata como ingredientes de hambúrguer (remoções)
+                         itemString += '\n' + item.ingredients.map(ing => {
+                             const quantityText = (ing.quantity && ing.quantity > 1) ? ` (x${ing.quantity})` : '';
+                             return `    *- ${ing.name}${quantityText}*`;
+                         }).join('\n');
+                    } else {
+                        // Trata como adicionais de pizza (adições) - do Cardápio Online (campo 'ingredients')
+                        itemString += '\n' + item.ingredients.map(extra => {
+                            const quantityText = (extra.quantity && extra.quantity > 1) ? ` (x${extra.quantity})` : '';
+                            const placementText = extra.placement ? ` (${extra.placement})` : ''; // CORREÇÃO: Lê o placement aqui também
+                            return `    *+ ${extra.name}${quantityText}${placementText}*`;
+                        }).join('\n');
+                    }
+                }
+                // <!--
+                // ========================================================================
+                // FIM DA ALTERAÇÃO - formatWhatsappMessage
+                // ========================================================================
+                // -->
+                
+                return itemString;
+            }).join('\n');
 
             let paymentText = 'A definir';
             if (order.pagamento) {
