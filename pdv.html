@@ -1322,7 +1322,6 @@ const firebaseConfig = {
             // FIM DA ALTERAÇÃO - createOrderCard
             // ========================================================================
             // -->
-
             const createdAtTimestamp = order.criadoEm && order.criadoEm.toMillis ? order.criadoEm.toMillis() : Date.now();
             const statusChangedAtTimestamp = order.statusChangedAt && order.statusChangedAt.toMillis ? order.statusChangedAt.toMillis() : createdAtTimestamp;
 
@@ -1887,18 +1886,27 @@ const firebaseConfig = {
                             height: auto !important; 
                             min-height: initial !important; 
                             margin: 0;
-                            /* Margem interna do papel */
-                            padding: 5mm; 
-                            font-family: 'Courier New', Courier, monospace;
+                            /* Margem interna do papel - REDUZIDA */
+                            padding: 2mm; 
+                            /* ALTERAÇÃO: Trocado de 'Courier New' para 'Arial' (sans-serif) */
+                            font-family: Arial, Helvetica, sans-serif;
+                            /* ALTERAÇÃO: Força a cor preta e negrito */
                             font-size: 10pt;
-                            color: #000;
+                            font-weight: bold !important;
+                            color: #000 !important;
+                            /* FIM DA ALTERAÇÃO */
                             background-color: #fff;
                             /* Garante que nada seja cortado */
                             overflow: visible !important; 
                         }
                         * {
-                            font-family: 'Courier New', Courier, monospace;
+                            /* ALTERAÇÃO: Trocado de 'Courier New' para 'Arial' (sans-serif) */
+                            font-family: Arial, Helvetica, sans-serif;
+                            /* ALTERAÇÃO: Força a cor preta e negrito */
                             font-size: 10pt;
+                            font-weight: bold !important;
+                            color: #000 !important;
+                            /* FIM DA ALTERAÇÃO */
                         }
                         h1 { font-size: 14pt; font-weight: bold; text-align: center; margin-bottom: 5px;}
                         h2 { font-size: 12pt; font-weight: bold; margin-top: 10px; margin-bottom: 5px; border-bottom: 1px dashed #000; padding-bottom: 2px;}
@@ -1906,8 +1914,8 @@ const firebaseConfig = {
                         ul { list-style: none; padding: 0; margin: 0; }
                         li { margin-bottom: 2px; }
                         .item-line { display: flex; justify-content: space-between; }
-                        .item-details { padding-left: 15px; font-size: 9pt; color: #333; }
-                        .item-details strong { font-size: 9pt; color: #000; } 
+                        .item-details { padding-left: 15px; font-size: 9pt;} /* Cor removida, herda do '*' */
+                        .item-details strong { font-size: 9pt; } /* Cor removida, herda do '*' */
                         hr { border: none; border-top: 1px dashed #000; margin: 10px 0; }
                         .text-right { text-align: right; }
                         .font-bold { font-weight: bold; }
@@ -1927,7 +1935,8 @@ const firebaseConfig = {
                 if (includePrice) {
                     itemString = `<li class="item-line"><span>${item.name || 'Item desconhecido'}</span><span>R$${parseFloat(item.price || 0).toFixed(2).replace('.', ',')}</span></li>`;
                 } else {
-                    itemString = `<li><strong>1x</strong> ${item.name || 'Item desconhecido'}</li>`;
+                    // ALTERAÇÃO: Removido o '•' e a tag <strong>
+                    itemString = `<li>${item.name || 'Item desconhecido'}</li>`;
                 }
                 
                 // --- INÍCIO DA CORREÇÃO ---
@@ -1989,6 +1998,10 @@ const firebaseConfig = {
                     <hr>
                     ${kitchenHtml}
                     ${order.observacao ? `<hr><h2>OBSERVAÇÕES</h2><p>${order.observacao}</p>` : ''}
+                    <p>=========================================</p>
+                    <p style="text-align: center;">FIM</p>
+                    <br>
+                    <br>
                 `;
             } else { // type === 'client'
                 // Lógica do Cliente (COM categorias, COM preços)
@@ -2031,6 +2044,10 @@ const firebaseConfig = {
                     </div>
                      ${order.observacao ? `<hr><h2>OBSERVAÇÕES</h2><p>${order.observacao}</p>` : ''}
                      ${paymentDetailsHtml}
+                    <p>=========================================</p>
+                    <p style="text-align: center;">FIM</p>
+                    <br>
+                    <br>
                 `;
             }
 
@@ -2059,7 +2076,7 @@ const firebaseConfig = {
             printWindow.onload = function() {
                 printWindow.focus(); // Foca na janela
                 printWindow.print(); // Abre a caixa de diálogo de impressão
-                printWindow.close(); // Fecha a janela após imprimir (ou cancelar)
+                // printWindow.close(); // REMOVIDO para manter a aba aberta
             };
 
             // Fallback caso o onload não dispare (comum em alguns navegadores)
@@ -2067,7 +2084,7 @@ const firebaseConfig = {
                 if (!printWindow.closed) {
                     printWindow.focus();
                     printWindow.print();
-                    printWindow.close();
+                    // printWindow.close(); // REMOVIDO para manter a aba aberta
                 }
             }, 500);
         }
@@ -2170,16 +2187,26 @@ const firebaseConfig = {
                             height: auto !important;
                             min-height: initial !important;
                             margin: 0;
-                            padding: 5mm;
-                            font-family: 'Courier New', Courier, monospace;
+                            /* Margem interna do papel - REDUZIDA */
+                            padding: 2mm;
+                            /* ALTERAÇÃO: Trocado de 'Courier New' para 'Arial' (sans-serif) */
+                            font-family: Arial, Helvetica, sans-serif;
+                            /* ALTERAÇÃO: Força a cor preta e negrito */
                             font-size: 10pt;
-                            color: #000;
+                            font-weight: bold !important;
+                            color: #000 !important;
+                            /* FIM DA ALTERAÇÃO */
                             background-color: #fff;
                             overflow: visible !important;
                         }
                         * {
-                            font-family: 'Courier New', Courier, monospace;
+                            /* ALTERAÇÃO: Trocado de 'Courier New' para 'Arial' (sans-serif) */
+                            font-family: Arial, Helvetica, sans-serif;
+                            /* ALTERAÇÃO: Força a cor preta e negrito */
                             font-size: 10pt;
+                            font-weight: bold !important;
+                            color: #000 !important;
+                            /* FIM DA ALTERAÇÃO */
                         }
                         h1 { font-size: 14pt; font-weight: bold; text-align: center; margin-bottom: 10px;}
                         h2 { font-size: 12pt; font-weight: bold; margin-top: 10px; margin-bottom: 5px; border-bottom: 1px dashed #000; padding-bottom: 2px;}
@@ -2231,6 +2258,10 @@ const firebaseConfig = {
                 <div class="line font-bold"><span>ESPERADO EM CAIXA:</span><span>${expected}</span></div>
                 <div class="line"><span>Valor Contado:</span><span>R$ ${parseFloat(finalValue || 0).toFixed(2).replace('.',',')}</span></div>
                 <div class="line font-bold"><span>DIFERENÇA:</span><span>${difference}</span></div>
+                <p>=========================================</p>
+                <p style="text-align: center;">FIM</p>
+                <br>
+                <br>
             `;
 
             // Lógica de impressão com window.open()
@@ -2244,13 +2275,13 @@ const firebaseConfig = {
             printWindow.onload = function() {
                 printWindow.focus();
                 printWindow.print();
-                printWindow.close();
+                // printWindow.close(); // REMOVIDO
             };
             setTimeout(() => {
                 if (!printWindow.closed) {
                     printWindow.focus();
                     printWindow.print();
-                    printWindow.close();
+                    // printWindow.close(); // REMOVIDO
                 }
             }, 500);
         }
@@ -2646,8 +2677,8 @@ const firebaseConfig = {
                 const modal = document.getElementById('delete-confirm-modal');
                 const titleEl = modal.querySelector('h3');
                 const messageEl = modal.querySelector('p');
-                const yesBtn = modal.querySelector('#confirm-delete-btn');
-                const noBtn = modal.querySelector('#cancel-delete-btn');
+                const yesBtn = document.getElementById('confirm-delete-btn');
+                const noBtn = document.getElementById('cancel-delete-btn');
 
                 const originalTitle = titleEl.textContent;
                 const originalYesText = yesBtn.textContent;
